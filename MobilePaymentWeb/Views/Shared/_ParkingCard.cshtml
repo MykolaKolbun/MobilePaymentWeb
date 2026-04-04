@@ -1,0 +1,34 @@
+﻿@model MobilePaymentWeb.Models.ParkingSessionViewModel
+
+<div class="card">
+    <h1>Alternatiview</h1>
+    <div class="section">
+    @{
+        if (Model.CarLP != null)
+        {
+        
+            <div class="label">Номер авто:</div>
+            <div class="value">@Model.CarLP</div>
+        }
+    }
+    @{
+        if (Model.EntryTime != null)
+        {
+        
+                <div class="label">В’їзд:</div>
+                <div class="value">@Model.EntryTime</div>
+        }
+    }
+    </div>
+    <div class="section">
+        <div class="label">Час на паркінгу:</div>
+        <div class="value">@Model.ParkDuration</div>
+    </div>
+
+    <hr />
+
+    <div class="section">
+        <div class="label">До сплати:</div>
+        <div class="price">@Model.Price грн</div>
+    </div>
+</div>

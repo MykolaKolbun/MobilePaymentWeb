@@ -1,0 +1,36 @@
+﻿@model MobilePaymentWeb.Models.ParkingSessionViewModel
+
+<div class="card">
+    <h1>Ваша паркувальна сесія завершилась</h1>
+    <h1>Чекаємо вас наступного разу</h1>
+    <div class="section">
+        @{
+            if (Model.CarLP != null)
+            {
+        
+                <div class="label">Номер авто:</div>
+                <div class="value">@Model.CarLP</div>
+            }
+        }
+        @{
+            if (Model.EntryTime != null)
+            {
+        
+                <div class="label">В’їзд:</div>
+                <div class="value">@Model.EntryTime</div>
+            }
+            if (Model.ExitTime != null)
+            {
+        
+                <div class="label">Виїзд:</div>
+                <div class="value">@Model.ExitTime</div>
+            }
+        }
+    </div>
+    <div class="section">
+        <div class="label">Час на паркінгу:</div>
+        <div class="value">@Model.ParkDuration</div>
+    </div>
+
+    <hr />
+</div>

@@ -1,0 +1,31 @@
+﻿.card {
+    background: var(--card);
+    padding: 20px;
+    border-radius: 15px;
+    width: 320px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.label {
+    color: gray;
+}
+
+.value {
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.price {
+    font-size: 32px;
+    font-weight: bold;
+}
+
+input[type="text"] {
+    width: 100%;
+    box-sizing: border-box;
+    height: 48px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    text-align: center;
+}

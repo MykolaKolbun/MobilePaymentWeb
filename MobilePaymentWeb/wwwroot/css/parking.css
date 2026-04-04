@@ -1,0 +1,66 @@
+﻿body {
+    font-family: Arial, sans-serif;
+    background: #f2f2f2;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+}
+
+.card {
+    background: #ffffff;
+    padding: 20px;
+    border-radius: 15px;
+    width: 320px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+h1 {
+    font-size: 20px;
+    margin-bottom: 20px;
+    color: #555;
+}
+
+.section {
+    margin: 20px 0;
+}
+
+.label {
+    color: #777;
+    font-size: 14px;
+}
+
+.value {
+    font-size: 28px;
+    font-weight: bold;
+    margin-top: 5px;
+}
+
+.price {
+    font-size: 32px;
+    font-weight: bold;
+}
+
+.pay-container {
+    margin-top: 20px;
+    width: 320px;
+}
+
+button {
+    width: 100%;
+    padding: 15px;
+    border: none;
+    border-radius: 10px;
+    background: #444;
+    color: white;
+    font-size: 18px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+button:hover {
+    background: #222;
+}

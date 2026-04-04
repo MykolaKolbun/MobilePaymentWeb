@@ -1,0 +1,16 @@
+﻿@model MobilePaymentWeb.Models.ParkingSessionViewModel
+<div class="card">
+    <h1>Вашу паркувальну сесію не знайдено</h1>
+    <div class="section">
+        @{
+            if (Model.CarLP != null)
+            {
+        
+                <div class="label">Номер авто:</div>
+                <div class="value">@Model.CarLP</div>
+            }
+        }
+    </div>
+    <h1>Спробуйте відсканувати талон</h1>
+    <hr />
+</div>

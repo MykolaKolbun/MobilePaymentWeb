@@ -1,0 +1,16 @@
+{
+  "providerId": "Microsoft.Tools.ServiceModel.Svcutil",
+  "version": "8.0.0",
+  "options": {
+    "inputs": [
+      "D:/Projects/Skidata/API/sweb-Interface-MobilePayment-API-2.5/wsdl/ticketManagement/v4/ParkingTicketManagementServiceV4.wsdl"
+    ],
+    "namespaceMappings": [
+      "*, SwebMobileService"
+    ],
+    "outputFile": "Reference.cs",
+    "serializerMode": "XmlSerializer",
+    "targetFramework": "net10.0",
+    "typeReuseMode": "All"
+  }
+}
