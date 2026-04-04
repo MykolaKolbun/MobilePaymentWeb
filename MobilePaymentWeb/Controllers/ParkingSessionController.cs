@@ -7,6 +7,7 @@ using SwebMobileService;
 using System.ServiceModel;
 using System.ServiceModel.Channels;
 using System.Text;
+using static MobilePaymentWeb.Helpers.Helpers;
 
 namespace MobilePaymentWeb.Controllers
 {
@@ -30,7 +31,10 @@ namespace MobilePaymentWeb.Controllers
             if (!string.IsNullOrEmpty(ticket))
                 ticketId = new GenericIdentification { Identificator = ticket, Type = "PARK" };
             else if (!string.IsNullOrEmpty(licensePlate))
+            {
+                licensePlate = ConvertToLatin(licensePlate.Trim().ToUpper());
                 ticketId = new LicensePlateIdentification { LicenseNo = licensePlate, Country = CountryCodeEnum.UA };
+            }
             else
                 return View("LicensePlateForm");
 
@@ -57,6 +61,7 @@ namespace MobilePaymentWeb.Controllers
                     ViewBag.Error = "Картка не знайдена або не активна.";
                     return View("ParkingSessionError");
                 }
+                var duration = DateTime.Now - cardInfo.CardInfo.EntryDateTime;
                 if (cardInfo.CardInfo.ExitDateTime > new DateTime(1994, 1, 1))
                 {
                     model = new ParkingSessionViewModel
@@ -64,17 +69,20 @@ namespace MobilePaymentWeb.Controllers
                         ExitTime = cardInfo.CardInfo.ExitDateTime.ToString("dd.MM.yyyy HH:mm"),
                         EntryTime = cardInfo.CardInfo.EntryDateTime.ToString("dd.MM.yyyy HH:mm"),
                         CarLP = cardInfo.CardInfo.LicenseNumber,
-                        ParkDuration = $"{(int)(cardInfo.CardInfo.ExitDateTime - cardInfo.CardInfo.EntryDateTime).TotalHours:D2}:{(cardInfo.CardInfo.ExitDateTime - cardInfo.CardInfo.EntryDateTime).Minutes:D2}"
+                        ParkDuration = $"{(int)duration.TotalHours:D2}:{duration.Minutes:D2}"
+                        //ParkDuration = $"{(int)(cardInfo.CardInfo.ExitDateTime - cardInfo.CardInfo.EntryDateTime).TotalHours:D2}:{(cardInfo.CardInfo.ExitDateTime - cardInfo.CardInfo.EntryDateTime).Minutes:D2}"
                     };
                     return View("ParkingSessionExit", model);
                 }
                 var rateInfo = await client.GetRateInfoAsync($"APT.FAC.{_skidata.FacilityID}", ticketId, _skidata.ExternalDeviceID.ToString(), _skidata.ParkingDeviceID.ToString());
+                
                 model = new ParkingSessionViewModel
                 {
                     Price = rateInfo.RateInfo.Price.Amount,
                     EntryTime = cardInfo.CardInfo.EntryDateTime.ToString("dd.MM.yyyy HH:mm"),
                     CarLP = cardInfo.CardInfo.LicenseNumber,
-                    ParkDuration = (DateTime.Now - cardInfo.CardInfo.EntryDateTime).ToString(@"hh\:mm")
+                    ParkDuration = $"{(int)duration.TotalHours:D2}:{duration.Minutes:D2}"
+                    //ParkDuration = (DateTime.Now - cardInfo.CardInfo.EntryDateTime).ToString(@"hh\:mm")
                 };
             }
             catch (Exception ex)
