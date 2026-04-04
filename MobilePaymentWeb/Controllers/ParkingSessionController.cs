@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using MobilePaymentWeb.Models;
 using MobilePaymentWeb.Services.IPay;
+using MobilePaymentWeb.Services.IPay.Models;
 using MobilePaymentWeb.Services.SkidataMobilePay;
 using SwebMobileService;
 using System.ServiceModel;
@@ -103,11 +104,28 @@ namespace MobilePaymentWeb.Controllers
         }
 
         [HttpPost]
-        public IActionResult Pay(ParkingSessionViewModel model)
+        public async Task<IActionResult> Pay(ParkingSessionViewModel model)
         {
-            // Тут може бути інтеграція з платіжною системою
-            ViewBag.Message = $"Оплачено {model.Price} грн за {model.EntryTime}";
-            return View("Success", model);
+            var response = await _ipay.CreatePaymentAsync(new CreatePaymentRequest
+            {
+                Amount = model.Price,
+                Description = $"Паркінг {model.CarLP}",
+                GoodUrl = "https://mobilepaymentweb-production.up.railway.app/ParkingSession/PaymentSuccess",
+                FailUrl = "https://mobilepaymentweb-production.up.railway.app/ParkingSession/PaymentFail",
+                ResultUrl = "https://your-railway-url/ipay/result"
+            });
+
+            if (response.IsSuccess)
+                return Redirect(response.PaymentUrl!);
+
+            ViewBag.Error = "Помилка при створенні платежу: " + response.ErrorMessage;
+            return View("Error");
         }
+
+        [HttpGet]
+        public IActionResult PaymentSuccess() => View();
+
+        [HttpGet]
+        public IActionResult PaymentFail() => View();
     }
 }
