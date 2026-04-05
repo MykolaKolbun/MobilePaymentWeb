@@ -43,14 +43,14 @@ namespace MobilePaymentWeb.Services.IPay
         {
             var xml = BuildPaymentRequestXml(request);
             var responseXml = await PostAsync(xml);
-            return ParseResponse(responseXml);
+            return ParsePaymentResponse(responseXml);
         }
 
         public async Task<IPayResponse> GetPaymentStatusAsync(string pid)
         {
             var xml = BuildPaymentStatusXml("status", pid);
             var responseXml = await PostAsync(xml);
-            return ParseResponse(responseXml);
+            return ParsePaymentResponse(responseXml);
         }
 
         #endregion
@@ -189,7 +189,7 @@ namespace MobilePaymentWeb.Services.IPay
         #endregion
 
         #region Response parser
-        private static IPayResponse ParseResponse(string xml)
+        private static IPayResponse ParsePaymentResponse(string xml)
         {
             try
             {
