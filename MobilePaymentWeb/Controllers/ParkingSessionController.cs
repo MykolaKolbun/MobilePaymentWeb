@@ -108,11 +108,16 @@ namespace MobilePaymentWeb.Controllers
         {
             var response = await _ipay.CreatePaymentAsync(new CreatePaymentRequest
             {
-                Amount = model.Price,
-                Description = $"Паркінг {model.CarLP}",
+                Amount = model.Price * 100,
+                //Amount = 1 * 100,
+                Description = $"Послуга паркування",
                 GoodUrl = "https://mobilepaymentweb-production.up.railway.app/ParkingSession/PaymentSuccess",
-                FailUrl = "https://mobilepaymentweb-production.up.railway.app/ParkingSession/PaymentFail",
-                ResultUrl = "https://your-railway-url/ipay/result"
+                BadUrl = "https://mobilepaymentweb-production.up.railway.app/ParkingSession/PaymentFail",
+                AutoRedirectBad = 1,
+                AutoRedirectGood = 1,
+                Lifetime = 0.5,
+                //Info = "{ \"CarLP\": \"" + model.CarLP + "\", \"EntryTime\": \"" + model.EntryTime + "\" }"
+                Info = new { CarLP = model.CarLP, EntryTime = model.EntryTime }
             });
 
             if (response.IsSuccess)

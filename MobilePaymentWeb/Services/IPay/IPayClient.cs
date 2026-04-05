@@ -1,6 +1,7 @@
 ﻿using MobilePaymentWeb.Services.IPay.Models;
 using System.Security.Cryptography;
 using System.Text;
+using System.Xml;
 using System.Xml.Linq;
 
 namespace MobilePaymentWeb.Services.IPay
@@ -87,21 +88,23 @@ namespace MobilePaymentWeb.Services.IPay
                 // URLs
                 new XElement("urls",
                     new XElement("good", req.GoodUrl),
-                    new XElement("fail", req.FailUrl),
-                    new XElement("result", req.ResultUrl)
+                    new XElement("bad", req.BadUrl),
+                    new XElement("auto_redirect_good", req.AutoRedirectGood),
+                    new XElement("auto_redirect_bad", req.AutoRedirectBad)
                 ),
 
                 // Transactions
                 new XElement("transactions",
                     new XElement("transaction",
-                        new XElement("amount", req.Amount.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)),
+                        new XElement("amount", (int)req.Amount),
                         new XElement("currency", req.Currency),
-                        new XElement("order_id", req.OrderId),
-                        new XElement("desc", req.Description)
+                        new XElement("desc", req.Description),
+                        //new XElement("info", new XCData(System.Text.Json.JsonSerializer.Serialize(req.Info)))
+                        new XElement("info", new XCData(System.Text.Json.JsonSerializer.Serialize(req.Info)))
+
                     )
                 ),
 
-                // Optional fields
                 req.Lifetime.HasValue
                     ? new XElement("lifetime", req.Lifetime.Value.ToString("F2", System.Globalization.CultureInfo.InvariantCulture))
                     : null,
@@ -111,7 +114,18 @@ namespace MobilePaymentWeb.Services.IPay
                     : null
             );
 
-            return new XDocument(new XDeclaration("1.0", "UTF-8", null), xml).ToString();
+            var settings = new XmlWriterSettings
+            {
+                Encoding = Encoding.UTF8,
+                Indent = true
+            };
+            using var ms = new MemoryStream();
+            using var xw = XmlWriter.Create(ms, settings);
+            new XDocument(new XDeclaration("1.0", "UTF-8", null), xml).Save(xw);
+            xw.Flush();
+            return Encoding.UTF8.GetString(ms.ToArray());
+
+
         }
 
         // -------------------------------------------------------------------------
@@ -127,8 +141,10 @@ namespace MobilePaymentWeb.Services.IPay
 
             // Encoding is UTF-8 by default for FormUrlEncodedContent
             var response = await _httpClient.PostAsync("", content);
-            response.EnsureSuccessStatusCode();
-            return await response.Content.ReadAsStringAsync();
+            var responseBody = await response.Content.ReadAsStringAsync();
+            if (!response.IsSuccessStatusCode)
+                throw new Exception($"iPay error {response.StatusCode}: {responseBody}");
+            return responseBody;
         }
 
         // -------------------------------------------------------------------------
