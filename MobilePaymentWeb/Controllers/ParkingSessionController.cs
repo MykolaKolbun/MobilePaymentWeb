@@ -149,8 +149,8 @@ namespace MobilePaymentWeb.Controllers
                 Amount = model.Price * 100,
                 //Amount = 1 * 100,
                 Description = $"Послуга паркування",
-                GoodUrl = "https://mobilepaymentweb-production.up.railway.app/ParkingSession/PaymentSuccess",
-                BadUrl = "https://mobilepaymentweb-production.up.railway.app/ParkingSession/PaymentFail",
+                GoodUrl = "https://mobilepaymentweb-production.up.railway.app/success",
+                BadUrl = "https://mobilepaymentweb-production.up.railway.app/fail",
                 AutoRedirectBad = 1,
                 AutoRedirectGood = 1,
                 Lifetime = 0.5,
@@ -174,7 +174,7 @@ namespace MobilePaymentWeb.Controllers
         /// status code may indicate an error or unknown status. This endpoint is typically used to poll for payment
         /// status updates after initiating a payment process.</remarks>
         /// <returns>An <see cref="JsonResult"/> containing an object with the payment status code for the current session.</returns>
-        [HttpGet]
+        [HttpGet("/status")]
         public async Task<IActionResult> CheckPaymentStatus()
         {
             var pid = HttpContext.Session.GetString("ipay_pid");
@@ -188,9 +188,13 @@ namespace MobilePaymentWeb.Controllers
         /// <remarks>This action is typically invoked after a payment process completes successfully. It
         /// can be used as a redirect target from payment gateways or internal payment status checks.</remarks>
         /// <returns>A view that confirms the successful completion of the payment.</returns>
-        [HttpGet]
+        [HttpGet("/success")]
         public IActionResult PaymentSuccess()
         {
+            var pid = HttpContext.Session.GetString("ipay_pid");
+            if (string.IsNullOrEmpty(pid))
+                return RedirectToAction("ParkingSession");
+
             return View();
         }
 
@@ -198,7 +202,14 @@ namespace MobilePaymentWeb.Controllers
         /// Returns the view that informs the user of a failed payment attempt.
         /// </summary>
         /// <returns>An <see cref="IActionResult"/> that renders the payment failure view to the client.</returns>
-        [HttpGet]
-        public IActionResult PaymentFail() => View();
+        [HttpGet("/fail")]
+        public IActionResult PaymentFail()
+        {
+            var pid = HttpContext.Session.GetString("ipay_pid");
+            if (string.IsNullOrEmpty(pid))
+                return RedirectToAction("ParkingSession");
+
+            return View();
+        }
     }
 }
