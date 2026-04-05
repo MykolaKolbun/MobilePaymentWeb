@@ -130,33 +130,47 @@ namespace MobilePaymentWeb.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> PaymentSuccess()
+        public async Task<IActionResult> CheckPaymentStatus()
         {
-            IPayResponse status;
-            var attempts = 0;
-            const int maxAttempts = 10;
             var pid = HttpContext.Session.GetString("ipay_pid");
-            do
-            {
-                status = await _ipay.GetPaymentStatusAsync(pid);
+            var status = await _ipay.GetPaymentStatusAsync(pid);
+            return Json(new { statusCode = status.StatusCode });
+        }
 
-                if (status.StatusCode == 1)
-                    await Task.Delay(2000); // wait 2 seconds before next check
+        //[HttpGet]
+        //public async Task<IActionResult> PaymentSuccess()
+        //{
+        //    IPayResponse status;
+        //    var attempts = 0;
+        //    const int maxAttempts = 10;
+        //    var pid = HttpContext.Session.GetString("ipay_pid");
+        //    do
+        //    {
+        //        status = await _ipay.GetPaymentStatusAsync(pid);
 
-                attempts++;
-            }
-            while (status.StatusCode == 1 && attempts < maxAttempts);
+        //        if (status.StatusCode == 1)
+        //            await Task.Delay(2000); // wait 2 seconds before next check
 
-            if (status.Status == PaymentStatus.Success)
-            {
-                var receipt = await _ipay.GetReceiptAsync(pid);
-                return File(receipt, "application/pdf", "receipt.pdf");
-            }
+        //        attempts++;
+        //    }
+        //    while (status.StatusCode == 1 && attempts < maxAttempts);
 
-            ViewBag.Error = status.StatusCode == 1
-                ? "Час очікування вичерпано. Спробуйте перевірити статус пізніше."
-                : $"Платіж неуспішний: {status.ErrorMessage}";
-            return View("PaymentFail");
+        //    if (status.Status == PaymentStatus.Success)
+        //    {
+        //        var receipt = await _ipay.GetReceiptAsync(pid);
+        //        return File(receipt, "application/pdf", "receipt.pdf");
+        //    }
+
+        //    ViewBag.Error = status.StatusCode == 1
+        //        ? "Час очікування вичерпано. Спробуйте перевірити статус пізніше."
+        //        : $"Платіж неуспішний: {status.ErrorMessage}";
+        //    return View("PaymentFail");
+        //}
+
+        [HttpGet]
+        public IActionResult PaymentSuccess()
+        {
+            return View();
         }
 
         [HttpGet]

@@ -1,11 +1,27 @@
 ﻿@{
-    ViewData["Title"] = "Оплата успішна";
+    ViewData["Title"] = "Обробка платежу";
 }
 
 <div class="card">
-    <h1>Дякуємо!</h1>
+    <h1 id="status-title">Обробка платежу...</h1>
     <div class="section">
-        <div class="label">Оплата пройшла успішно</div>
-        <div class="value">Ви можете виїжджати з паркінгу</div>
+        <div class="label" id="status-message">Будь ласка, зачекайте</div>
     </div>
 </div>
+
+<script>
+    const interval = setInterval(async () => {
+        const res = await fetch('/ParkingSession/CheckPaymentStatus');
+        const data = await res.json();
+
+        if (data.statusCode === 5) {
+            clearInterval(interval);
+            document.getElementById('status-title').innerText = 'Оплата успішна!';
+            document.getElementById('status-message').innerText = 'Дякуємо! Ви можете виїжджати.';
+        } else if (data.statusCode === 4) {
+            clearInterval(interval);
+            document.getElementById('status-title').innerText = 'Оплата не вдалась';
+            document.getElementById('status-message').innerText = 'Спробуйте ще раз або зверніться на касу.';
+        }
+    }, 2000);
+</script>

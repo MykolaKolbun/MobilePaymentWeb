@@ -12,7 +12,12 @@ builder.Services.AddSingleton(sp => new IPayClient(
     logger: sp.GetRequiredService<ILogger<IPayClient>>(),
     sandbox: true
 ));
-builder.Services.AddSession();
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromMinutes(10);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+});
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
