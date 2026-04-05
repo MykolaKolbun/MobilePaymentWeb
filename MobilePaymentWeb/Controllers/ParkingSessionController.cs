@@ -106,6 +106,7 @@ namespace MobilePaymentWeb.Controllers
         [HttpPost]
         public async Task<IActionResult> Pay(ParkingSessionViewModel model)
         {
+            
             var response = await _ipay.CreatePaymentAsync(new CreatePaymentRequest
             {
                 Amount = model.Price * 100,
@@ -119,21 +120,22 @@ namespace MobilePaymentWeb.Controllers
                 //Info = "{ \"CarLP\": \"" + model.CarLP + "\", \"EntryTime\": \"" + model.EntryTime + "\" }"
                 Info = new { model.CarLP, model.EntryTime }
             });
-
             if (response.IsSuccess)
+            {
+                HttpContext.Session.SetString("ipay_pid", response.Pid!);
                 return Redirect(response.PaymentUrl!);
-
+            }
             ViewBag.Error = "Помилка при створенні платежу: " + response.ErrorMessage;
             return View("Error");
         }
 
         [HttpGet]
-        public async Task<IActionResult> PaymentSuccess(string pid)
+        public async Task<IActionResult> PaymentSuccess()
         {
             IPayResponse status;
             var attempts = 0;
             const int maxAttempts = 10;
-
+            var pid = HttpContext.Session.GetString("ipay_pid");
             do
             {
                 status = await _ipay.GetPaymentStatusAsync(pid);
