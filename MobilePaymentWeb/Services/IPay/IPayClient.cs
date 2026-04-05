@@ -37,8 +37,11 @@ namespace MobilePaymentWeb.Services.IPay
 
         #region Public API
         /// <summary>
-        /// Creates a payment and returns the response XML from iPay.
+        /// Creates a new payment asynchronously using the specified payment request details.
         /// </summary>
+        /// <param name="request">An object containing the details required to create the payment. Cannot be null.</param>
+        /// <returns>A task that represents the asynchronous operation. The task result contains an object representing the
+        /// response to the payment request.</returns>
         public async Task<IPayResponse> CreatePaymentAsync(CreatePaymentRequest request)
         {
             var xml = BuildPaymentRequestXml(request);
@@ -46,6 +49,11 @@ namespace MobilePaymentWeb.Services.IPay
             return ParsePaymentResponse(responseXml);
         }
 
+        /// <summary>
+        /// Gets the current status of a payment by its PID. Returns the response XML from iPay, which includes the status code and other details.
+        /// </summary>
+        /// <param name="pid"></param>
+        /// <returns></returns>
         public async Task<IPayResponse> GetPaymentStatusAsync(string pid)
         {
             var xml = BuildPaymentStatusXml("status", pid);
@@ -53,6 +61,22 @@ namespace MobilePaymentWeb.Services.IPay
             return ParsePaymentResponse(responseXml);
         }
 
+        /// <summary>
+        /// Gets the receipt file for a completed payment. Returns raw bytes of the receipt (PDF or similar).
+        /// </summary>
+        /// <param name="pid"></param>
+        /// <returns></returns>
+        public async Task<byte[]> GetReceiptAsync(string pid)
+        {
+            var xml = BuildPaymentStatusXml("GetReceipt", pid);
+            // receipt is returned as a file, not XML
+            var content = new FormUrlEncodedContent(new[]
+            {
+                new KeyValuePair<string, string>("data", xml)
+            });
+            var response = await _httpClient.PostAsync("", content);
+            return await response.Content.ReadAsByteArrayAsync();
+        }
         #endregion
 
         #region Signature helpers

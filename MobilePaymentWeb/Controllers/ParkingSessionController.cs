@@ -148,7 +148,10 @@ namespace MobilePaymentWeb.Controllers
             while (status.StatusCode == 1 && attempts < maxAttempts);
 
             if (status.Status == PaymentStatus.Success)
-                return View(); // then GetReceipt
+            {
+                var receipt = await _ipay.GetReceiptAsync(pid);
+                return File(receipt, "application/pdf", "receipt.pdf");
+            }
 
             ViewBag.Error = status.StatusCode == 1
                 ? "Час очікування вичерпано. Спробуйте перевірити статус пізніше."
