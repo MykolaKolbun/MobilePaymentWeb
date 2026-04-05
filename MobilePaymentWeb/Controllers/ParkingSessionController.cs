@@ -43,14 +43,28 @@ namespace MobilePaymentWeb.Controllers
             Identification ticketId;
 
             if (!string.IsNullOrEmpty(ticket))
+            {
+                if (!System.Text.RegularExpressions.Regex.IsMatch(ticket, @"^\d{1,20}$"))
+                {
+                    ViewBag.Error = "Невірний формат талону";
+                    return View("LicensePlateForm");
+                }
                 ticketId = new GenericIdentification { Identificator = ticket, Type = "PARK" };
+            }
             else if (!string.IsNullOrEmpty(licensePlate))
             {
                 licensePlate = ConvertToLatin(licensePlate.Trim().ToUpper());
+                if (!System.Text.RegularExpressions.Regex.IsMatch(licensePlate, @"^[A-Z0-9]{3,10}$"))
+                {
+                    ViewBag.Error = "Невірний формат номеру авто";
+                    return View("LicensePlateForm");
+                }
                 ticketId = new LicensePlateIdentification { LicenseNo = licensePlate, Country = CountryCodeEnum.UA };
             }
             else
+            {    
                 return View("LicensePlateForm");
+            }
 
             var binding = new CustomBinding(
                     new TextMessageEncodingBindingElement(MessageVersion.Soap11, Encoding.UTF8),
