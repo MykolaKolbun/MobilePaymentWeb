@@ -11,21 +11,41 @@
     color: gray;
 }
 
-.value {
-    font-size: 28px;
-    font-weight: bold;
-}
-
 .price {
     font-size: 32px;
     font-weight: bold;
 }
 
 input[type="text"] {
-    width: 100%;
+    width: 75%;
     box-sizing: border-box;
     height: 48px;
-    font-size: 1.2rem;
+    font-size: 28px;
     font-weight: bold;
     text-align: center;
+}
+h1 {
+    font-size: 20px;
+    margin-bottom: 20px;
+    color: #555;
+}
+
+.section {
+    margin: 20px 0;
+}
+
+.label {
+    color: #777;
+    font-size: 14px;
+}
+
+.value {
+    font-size: 28px;
+    font-weight: bold;
+    margin-top: 5px;
+}
+
+.price {
+    font-size: 32px;
+    font-weight: bold;
 }

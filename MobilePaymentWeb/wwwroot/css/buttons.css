@@ -1,13 +1,5 @@
 ﻿.pay-btn {
     width: 100%;
-    padding: 15px;
-    border-radius: 12px;
-    border: none;
-    background: #444;
-    color: white;
-    font-size: 18px;
-    cursor: pointer;
-    transition: 0.2s;
 }
 
 .pay-btn:hover {
@@ -17,3 +9,19 @@
 .pay-btn:active {
     transform: scale(0.97);
 }
+
+button {
+    width: 100%;
+    padding: 15px;
+    border: none;
+    border-radius: 10px;
+    background: #444;
+    color: white;
+    font-size: 18px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+    button:hover {
+        background: #222;
+    }
