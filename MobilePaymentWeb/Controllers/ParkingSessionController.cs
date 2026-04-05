@@ -128,7 +128,31 @@ namespace MobilePaymentWeb.Controllers
         }
 
         [HttpGet]
-        public IActionResult PaymentSuccess() => View();
+        public async Task<IActionResult> PaymentSuccess(string pid)
+        {
+            IPayResponse status;
+            var attempts = 0;
+            const int maxAttempts = 10;
+
+            do
+            {
+                status = await _ipay.GetPaymentStatusAsync(pid);
+
+                if (status.StatusCode == 1)
+                    await Task.Delay(2000); // wait 2 seconds before next check
+
+                attempts++;
+            }
+            while (status.StatusCode == 1 && attempts < maxAttempts);
+
+            if (status.Status == PaymentStatus.Success)
+                return View(); // then GetReceipt
+
+            ViewBag.Error = status.StatusCode == 1
+                ? "Час очікування вичерпано. Спробуйте перевірити статус пізніше."
+                : $"Платіж неуспішний: {status.ErrorMessage}";
+            return View("PaymentFail");
+        }
 
         [HttpGet]
         public IActionResult PaymentFail() => View();

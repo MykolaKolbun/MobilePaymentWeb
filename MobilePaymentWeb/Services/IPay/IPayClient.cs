@@ -41,11 +41,17 @@ namespace MobilePaymentWeb.Services.IPay
         /// </summary>
         public async Task<IPayResponse> CreatePaymentAsync(CreatePaymentRequest request)
         {
-            var xml = BuildRequestXml(request);
+            var xml = BuildPaymentRequestXml(request);
             var responseXml = await PostAsync(xml);
             return ParseResponse(responseXml);
         }
 
+        public async Task<IPayResponse> GetPaymentStatusAsync(string pid)
+        {
+            var xml = BuildPaymentStatusXml("status", pid);
+            var responseXml = await PostAsync(xml);
+            return ParseResponse(responseXml);
+        }
 
         #endregion
 
@@ -73,8 +79,8 @@ namespace MobilePaymentWeb.Services.IPay
         #endregion
 
 
-        #region XML builder
-        private string BuildRequestXml(CreatePaymentRequest req)
+        #region XML builders
+        private string BuildPaymentRequestXml(CreatePaymentRequest req)
         {
             var salt = GenerateSalt();
             var sign = GenerateSign(salt, _signKey);
@@ -130,6 +136,32 @@ namespace MobilePaymentWeb.Services.IPay
 
 
         }
+
+        private string BuildPaymentStatusXml(string action, string pid)
+        {
+            var salt = GenerateSalt();
+            var sign = GenerateSign(salt, _signKey);
+
+            var xml = new XElement("payment",
+                new XElement("auth",
+                    new XElement("mch_id", _mchId),
+                    new XElement("salt", salt),
+                    new XElement("sign", sign)
+                ),
+                new XElement("action", action),
+                new XElement("pid", pid)
+            );
+            var settings = new XmlWriterSettings
+            {
+                Encoding = Encoding.UTF8,
+                Indent = true
+            };
+            using var ms = new MemoryStream();
+            using var xw = XmlWriter.Create(ms, settings);
+            new XDocument(new XDeclaration("1.0", "UTF-8", null), xml).Save(xw);
+            xw.Flush();
+            return Encoding.UTF8.GetString(ms.ToArray());
+        }
         #endregion
 
 
@@ -166,7 +198,6 @@ namespace MobilePaymentWeb.Services.IPay
 
                 var statusRaw = root.Element("status")?.Value;
                 var statusCode = statusRaw != null && int.TryParse(statusRaw, out var s) ? s : (int?)null;
-
                 return new IPayResponse
                 {
                     RawXml = xml,
