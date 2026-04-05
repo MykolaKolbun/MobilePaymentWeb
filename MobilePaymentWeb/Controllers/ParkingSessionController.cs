@@ -23,6 +23,19 @@ namespace MobilePaymentWeb.Controllers
             _ipay = ipay;
         }
 
+        /// <summary>
+        /// Retrieves and displays information about a parking session based on a ticket number or license plate.
+        /// </summary>
+        /// <remarks>If both parameters are null or empty, the method displays a form for entering a
+        /// license plate. If the parking session cannot be found or an error occurs while retrieving data, an error
+        /// view is returned. The method communicates with an external parking management service and may display
+        /// different views depending on the session state (active or exited).</remarks>
+        /// <param name="ticket">The parking ticket number used to identify the parking session. If specified, this value takes precedence
+        /// over the license plate. Can be null or empty.</param>
+        /// <param name="licensePlate">The vehicle's license plate number used to identify the parking session if no ticket is provided. Can be
+        /// null or empty.</param>
+        /// <returns>An IActionResult that renders the parking session view with session details, an error view if the session
+        /// cannot be found, or a form view if no identification is provided.</returns>
         [HttpGet]
         public async Task<IActionResult> ParkingSession(string? ticket, string? licensePlate)
         {
@@ -65,13 +78,14 @@ namespace MobilePaymentWeb.Controllers
                 var duration = DateTime.Now - cardInfo.CardInfo.EntryDateTime;
                 if (cardInfo.CardInfo.ExitDateTime > new DateTime(1994, 1, 1))
                 {
+                    duration = cardInfo.CardInfo.ExitDateTime - cardInfo.CardInfo.EntryDateTime;
                     model = new ParkingSessionViewModel
                     {
                         ExitTime = cardInfo.CardInfo.ExitDateTime.ToString("dd.MM.yyyy HH:mm"),
                         EntryTime = cardInfo.CardInfo.EntryDateTime.ToString("dd.MM.yyyy HH:mm"),
                         CarLP = cardInfo.CardInfo.LicenseNumber,
                         ParkDuration = $"{(int)duration.TotalHours:D2}:{duration.Minutes:D2}"
-                        //ParkDuration = $"{(int)(cardInfo.CardInfo.ExitDateTime - cardInfo.CardInfo.EntryDateTime).TotalHours:D2}:{(cardInfo.CardInfo.ExitDateTime - cardInfo.CardInfo.EntryDateTime).Minutes:D2}"
+                        
                     };
                     return View("ParkingSessionExit", model);
                 }
@@ -83,7 +97,6 @@ namespace MobilePaymentWeb.Controllers
                     EntryTime = cardInfo.CardInfo.EntryDateTime.ToString("dd.MM.yyyy HH:mm"),
                     CarLP = cardInfo.CardInfo.LicenseNumber,
                     ParkDuration = $"{(int)duration.TotalHours:D2}:{duration.Minutes:D2}"
-                    //ParkDuration = (DateTime.Now - cardInfo.CardInfo.EntryDateTime).ToString(@"hh\:mm")
                 };
             }
             catch (Exception ex)
@@ -103,6 +116,16 @@ namespace MobilePaymentWeb.Controllers
             return View(model);
         }
 
+        /// <summary>
+        /// Initiates a payment process for a parking session using the provided session details.
+        /// </summary>
+        /// <remarks>If the payment request is successful, the method stores the payment identifier in the
+        /// session and redirects the user to the payment provider. If the request fails, an error message is displayed.
+        /// The method is intended to be used as an HTTP POST action.</remarks>
+        /// <param name="model">The parking session information, including price, car license plate, and entry time, used to create the
+        /// payment request. Cannot be null.</param>
+        /// <returns>A task that represents the asynchronous operation. The task result contains an IActionResult that redirects
+        /// the user to the payment page if the payment request is successful; otherwise, displays an error view.</returns>
         [HttpPost]
         public async Task<IActionResult> Pay(ParkingSessionViewModel model)
         {
@@ -129,6 +152,14 @@ namespace MobilePaymentWeb.Controllers
             return View("Error");
         }
 
+        /// <summary>
+        /// Retrieves the current payment status for the session's payment identifier.
+        /// </summary>
+        /// <remarks>This method expects a valid payment identifier to be present in the session under the
+        /// key "ipay_pid". If the session does not contain this key or the payment identifier is invalid, the returned
+        /// status code may indicate an error or unknown status. This endpoint is typically used to poll for payment
+        /// status updates after initiating a payment process.</remarks>
+        /// <returns>An <see cref="JsonResult"/> containing an object with the payment status code for the current session.</returns>
         [HttpGet]
         public async Task<IActionResult> CheckPaymentStatus()
         {
@@ -137,42 +168,22 @@ namespace MobilePaymentWeb.Controllers
             return Json(new { statusCode = status.StatusCode });
         }
 
-        //[HttpGet]
-        //public async Task<IActionResult> PaymentSuccess()
-        //{
-        //    IPayResponse status;
-        //    var attempts = 0;
-        //    const int maxAttempts = 10;
-        //    var pid = HttpContext.Session.GetString("ipay_pid");
-        //    do
-        //    {
-        //        status = await _ipay.GetPaymentStatusAsync(pid);
-
-        //        if (status.StatusCode == 1)
-        //            await Task.Delay(2000); // wait 2 seconds before next check
-
-        //        attempts++;
-        //    }
-        //    while (status.StatusCode == 1 && attempts < maxAttempts);
-
-        //    if (status.Status == PaymentStatus.Success)
-        //    {
-        //        var receipt = await _ipay.GetReceiptAsync(pid);
-        //        return File(receipt, "application/pdf", "receipt.pdf");
-        //    }
-
-        //    ViewBag.Error = status.StatusCode == 1
-        //        ? "Час очікування вичерпано. Спробуйте перевірити статус пізніше."
-        //        : $"Платіж неуспішний: {status.ErrorMessage}";
-        //    return View("PaymentFail");
-        //}
-
+        /// <summary>
+        /// Handles the callback for a successful payment and displays the payment success view to the user.
+        /// </summary>
+        /// <remarks>This action is typically invoked after a payment process completes successfully. It
+        /// can be used as a redirect target from payment gateways or internal payment status checks.</remarks>
+        /// <returns>A view that confirms the successful completion of the payment.</returns>
         [HttpGet]
         public IActionResult PaymentSuccess()
         {
             return View();
         }
 
+        /// <summary>
+        /// Returns the view that informs the user of a failed payment attempt.
+        /// </summary>
+        /// <returns>An <see cref="IActionResult"/> that renders the payment failure view to the client.</returns>
         [HttpGet]
         public IActionResult PaymentFail() => View();
     }
