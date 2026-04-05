@@ -1,8 +1,8 @@
 ﻿@model MobilePaymentWeb.Models.ParkingSessionViewModel
-<div class="sticky-pay">
+
     <form method="post" asp-action="Pay">
         <input type="hidden" asp-for="ParkDuration" />
         <input type="hidden" asp-for="Price" />
         <button type="submit" class="pay-btn">СПЛАТИТИ</button>
     </form>
-</div>
+

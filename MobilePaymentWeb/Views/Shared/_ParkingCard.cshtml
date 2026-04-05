@@ -30,8 +30,9 @@
     <div class="section">
         <div class="label">До сплати:</div>
         <div class="price">@Model.Price грн</div>
+        <div style="margin-top: 15px;">
+            <partial name="_PayButton" model="Model" />
+        </div>
     </div>
-    <div style="margin-top: 15px;">
-        <partial name="_PayButton" model="Model" />
-    </div>
+    
 </div>
