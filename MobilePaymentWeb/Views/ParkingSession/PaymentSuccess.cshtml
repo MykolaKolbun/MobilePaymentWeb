@@ -11,7 +11,7 @@
 
 <script>
     const interval = setInterval(async () => {
-        const res = await fetch('/ParkingSession/CheckPaymentStatus');
+        const res = await fetch('/status');
         const data = await res.json();
 
         if (data.statusCode === 5) {
