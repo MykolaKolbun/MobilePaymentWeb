@@ -117,7 +117,7 @@ namespace MobilePaymentWeb.Controllers
                 AutoRedirectGood = 1,
                 Lifetime = 0.5,
                 //Info = "{ \"CarLP\": \"" + model.CarLP + "\", \"EntryTime\": \"" + model.EntryTime + "\" }"
-                Info = new { CarLP = model.CarLP, EntryTime = model.EntryTime }
+                Info = new { model.CarLP, model.EntryTime }
             });
 
             if (response.IsSuccess)

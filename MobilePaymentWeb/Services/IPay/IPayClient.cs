@@ -15,23 +15,27 @@ namespace MobilePaymentWeb.Services.IPay
         private readonly string _mchId;
         private readonly string _signKey;
         private readonly HttpClient _httpClient;
-
+        private readonly ILogger<IPayClient> _logger;
         // Switch to "https://checkout.ipay.ua/api302" for production
         private const string SandboxUrl = "https://sandbox-checkout.ipay.ua/api302";
         private const string ProductionUrl = "https://checkout.ipay.ua/api302";
 
-        public IPayClient(string mchId, string signKey, bool sandbox = true)
+
+        #region Constructor
+        public IPayClient(string mchId, string signKey, ILogger<IPayClient> logger, bool sandbox = true)
         {
             _mchId = mchId;
             _signKey = signKey;
-            _httpClient = new HttpClient();
-            _httpClient.BaseAddress = new Uri(sandbox ? SandboxUrl : ProductionUrl);
+            _logger = logger;
+            _httpClient = new HttpClient
+            {
+                BaseAddress = new Uri(sandbox ? SandboxUrl : ProductionUrl)
+            };
         }
+        #endregion
 
-        // -------------------------------------------------------------------------
-        // Public API
-        // -------------------------------------------------------------------------
 
+        #region Public API
         /// <summary>
         /// Creates a payment and returns the response XML from iPay.
         /// </summary>
@@ -42,10 +46,10 @@ namespace MobilePaymentWeb.Services.IPay
             return ParseResponse(responseXml);
         }
 
-        // -------------------------------------------------------------------------
-        // Signature helpers
-        // -------------------------------------------------------------------------
 
+        #endregion
+
+        #region Signature helpers
         /// <summary>
         /// Stage 1 – Salt: SHA1 of current Unix timestamp (matches PHP sha1(microtime(true)))
         /// </summary>
@@ -66,11 +70,10 @@ namespace MobilePaymentWeb.Services.IPay
             var hash = HMACSHA512.HashData(keyBytes, saltBytes);
             return Convert.ToHexString(hash).ToLower();
         }
+        #endregion
 
-        // -------------------------------------------------------------------------
-        // XML builder
-        // -------------------------------------------------------------------------
 
+        #region XML builder
         private string BuildRequestXml(CreatePaymentRequest req)
         {
             var salt = GenerateSalt();
@@ -127,30 +130,33 @@ namespace MobilePaymentWeb.Services.IPay
 
 
         }
+        #endregion
 
-        // -------------------------------------------------------------------------
-        // HTTP POST
-        // -------------------------------------------------------------------------
+
+        #region HTTP POST
 
         private async Task<string> PostAsync(string xml)
         {
+            _logger.LogInformation("IPay request: {Xml}", xml);
+
             var content = new FormUrlEncodedContent(new[]
             {
-            new KeyValuePair<string, string>("data", xml)
-        });
+                new KeyValuePair<string, string>("data", xml)
+            });
 
-            // Encoding is UTF-8 by default for FormUrlEncodedContent
             var response = await _httpClient.PostAsync("", content);
             var responseBody = await response.Content.ReadAsStringAsync();
+
+            _logger.LogInformation("IPay response ({StatusCode}): {Body}", response.StatusCode, responseBody);
+
             if (!response.IsSuccessStatusCode)
                 throw new Exception($"iPay error {response.StatusCode}: {responseBody}");
+
             return responseBody;
         }
+        #endregion
 
-        // -------------------------------------------------------------------------
-        // Response parser
-        // -------------------------------------------------------------------------
-
+        #region Response parser
         private static IPayResponse ParseResponse(string xml)
         {
             try
@@ -180,6 +186,7 @@ namespace MobilePaymentWeb.Services.IPay
                 };
             }
         }
+        #endregion
     }
 
 }
