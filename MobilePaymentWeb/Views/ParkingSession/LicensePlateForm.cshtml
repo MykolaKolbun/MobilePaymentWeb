@@ -8,15 +8,14 @@
     {
         <div class="error">@ViewBag.Error</div>
     }
-    <form id="lpForm" method="get" asp-action="ParkingSession">
+    <form id="lf" method="get" asp-action="ParkingSession">
         <div class="section">
             <div class="label">Введіть номер авто:</div>
             <input type="text" name="licensePlate" placeholder="AA0000AA"
                    autocomplete="off" autofocus minlength="3" required />
         </div>
+        <div style="margin-top: 15px;">
+            <button type="submit" class="pay-btn">Знайти</button>
+        </div>
     </form>
-</div>
-
-<div class="sticky-pay">
-    <button type="submit" form="lpForm" class="pay-btn">Знайти</button>
 </div>
