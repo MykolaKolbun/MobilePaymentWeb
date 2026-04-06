@@ -50,8 +50,8 @@ namespace MobilePaymentWeb.Services.IPay
             {
                 Amount = request.Amount,
                 Description = request.Description,
-                GoodUrl = request.GoodUrl,
-                BadUrl = request.BadUrl,
+                GoodUrl = request.SuccessUrl,
+                BadUrl = request.FailUrl,
                 Lifetime = request.Lifetime,
                 Lang = request.Lang,
                 Info = request.Info

@@ -149,11 +149,12 @@ namespace MobilePaymentWeb.Controllers
             var response = await _paymentProvider.CreatePaymentAsync(new PaymentRequest
             {
                 Amount = model.Price * 100,
-                //Amount = 1 * 100,
                 Description = $"Послуга паркування",
                 SuccessUrl = "https://mobilepaymentweb-production.up.railway.app/success",
                 FailUrl = "https://mobilepaymentweb-production.up.railway.app/fail",
                 Lifetime = 0.5,
+                Lang = "uk",
+                Currency = "UAH",
                 Info = new { model.CarLP, model.EntryTime }
             });
             if (response.IsSuccess)
