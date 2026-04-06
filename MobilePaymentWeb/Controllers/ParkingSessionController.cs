@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using MobilePaymentWeb.Models;
+using MobilePaymentWeb.Models.Payment;
+using MobilePaymentWeb.Services;
 using MobilePaymentWeb.Services.IPay;
 using MobilePaymentWeb.Services.IPay.Models;
 using MobilePaymentWeb.Services.SkidataMobilePay;
@@ -15,12 +17,12 @@ namespace MobilePaymentWeb.Controllers
     public class ParkingSessionController : Controller
     {
         private readonly SkidataOptions _skidata;
-        private readonly IPayClient _ipay;
+        private readonly IPaymentProvider _paymentProvider;
 
-        public ParkingSessionController(IOptions<SkidataOptions> skidataOptions, IPayClient ipay)
+        public ParkingSessionController(IOptions<SkidataOptions> skidataOptions, IPaymentProvider paymentProvider)
         {
             _skidata = skidataOptions.Value;
-            _ipay = ipay;
+            _paymentProvider = paymentProvider;
         }
 
         /// <summary>
@@ -144,17 +146,14 @@ namespace MobilePaymentWeb.Controllers
         public async Task<IActionResult> Pay(ParkingSessionViewModel model)
         {
             
-            var response = await _ipay.CreatePaymentAsync(new CreatePaymentRequest
+            var response = await _paymentProvider.CreatePaymentAsync(new PaymentRequest
             {
                 Amount = model.Price * 100,
                 //Amount = 1 * 100,
                 Description = $"Послуга паркування",
-                GoodUrl = "https://mobilepaymentweb-production.up.railway.app/success",
-                BadUrl = "https://mobilepaymentweb-production.up.railway.app/fail",
-                AutoRedirectBad = 1,
-                AutoRedirectGood = 1,
+                SuccessUrl = "https://mobilepaymentweb-production.up.railway.app/success",
+                FailUrl = "https://mobilepaymentweb-production.up.railway.app/fail",
                 Lifetime = 0.5,
-                //Info = "{ \"CarLP\": \"" + model.CarLP + "\", \"EntryTime\": \"" + model.EntryTime + "\" }"
                 Info = new { model.CarLP, model.EntryTime }
             });
             if (response.IsSuccess)
@@ -178,8 +177,8 @@ namespace MobilePaymentWeb.Controllers
         public async Task<IActionResult> CheckPaymentStatus()
         {
             var pid = HttpContext.Session.GetString("ipay_pid");
-            var status = await _ipay.GetPaymentStatusAsync(pid);
-            return Json(new { statusCode = status.StatusCode });
+            var status = await _paymentProvider.GetPaymentStatusAsync(pid);
+            return Json(new { statusCode = (int)status.Status });
         }
 
         /// <summary>

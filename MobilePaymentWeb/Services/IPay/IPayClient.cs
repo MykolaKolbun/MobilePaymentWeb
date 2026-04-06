@@ -1,8 +1,10 @@
-﻿using MobilePaymentWeb.Services.IPay.Models;
+﻿using MobilePaymentWeb.Models.Payment;
+using MobilePaymentWeb.Services.IPay.Models;
 using System.Security.Cryptography;
 using System.Text;
 using System.Xml;
 using System.Xml.Linq;
+using PaymentStatus = MobilePaymentWeb.Models.Payment.PaymentStatus;
 
 namespace MobilePaymentWeb.Services.IPay
 {
@@ -10,7 +12,7 @@ namespace MobilePaymentWeb.Services.IPay
     /// iPay.ua API client for creating payments (.NET 8)
     /// Endpoint: https://sandbox-checkout.ipay.ua/api302
     /// </summary>
-    public class IPayClient
+    public class IPayClient: IPaymentProvider
     {
         private readonly string _mchId;
         private readonly string _signKey;
@@ -42,11 +44,29 @@ namespace MobilePaymentWeb.Services.IPay
         /// <param name="request">An object containing the details required to create the payment. Cannot be null.</param>
         /// <returns>A task that represents the asynchronous operation. The task result contains an object representing the
         /// response to the payment request.</returns>
-        public async Task<IPayResponse> CreatePaymentAsync(CreatePaymentRequest request)
+        public async Task<PaymentResponse> CreatePaymentAsync(PaymentRequest request)
         {
-            var xml = BuildPaymentRequestXml(request);
+            var iPayRequest = new CreatePaymentRequest
+            {
+                Amount = request.Amount,
+                Description = request.Description,
+                GoodUrl = request.GoodUrl,
+                BadUrl = request.BadUrl,
+                Lifetime = request.Lifetime,
+                Lang = request.Lang,
+                Info = request.Info
+            };
+            var xml = BuildPaymentRequestXml(iPayRequest);
             var responseXml = await PostAsync(xml);
-            return ParsePaymentResponse(responseXml);
+            var iPayResponse = ParsePaymentResponse(responseXml);
+
+            return new PaymentResponse
+            {
+                Pid = iPayResponse.Pid,
+                PaymentUrl = iPayResponse.PaymentUrl,
+                IsSuccess = iPayResponse.IsSuccess,
+                ErrorMessage = iPayResponse.ErrorMessage
+            };
         }
 
         /// <summary>
@@ -54,11 +74,18 @@ namespace MobilePaymentWeb.Services.IPay
         /// </summary>
         /// <param name="pid"></param>
         /// <returns></returns>
-        public async Task<IPayResponse> GetPaymentStatusAsync(string pid)
+        public async Task<PaymentStatusResponse> GetPaymentStatusAsync(string pid)
         {
             var xml = BuildPaymentStatusXml("status", pid);
             var responseXml = await PostAsync(xml);
-            return ParsePaymentResponse(responseXml);
+            var iPayResponse = ParsePaymentResponse(responseXml);
+
+            return new PaymentStatusResponse
+            {
+                Pid = iPayResponse.Pid,
+                Status = (PaymentStatus)iPayResponse.StatusCode,
+                ErrorMessage = iPayResponse.ErrorMessage
+            };
         }
 
         /// <summary>
@@ -213,7 +240,7 @@ namespace MobilePaymentWeb.Services.IPay
         #endregion
 
         #region Response parser
-        private static IPayResponse ParsePaymentResponse(string xml)
+        private static PaymentResponse ParsePaymentResponse(string xml)
         {
             try
             {
@@ -222,7 +249,7 @@ namespace MobilePaymentWeb.Services.IPay
 
                 var statusRaw = root.Element("status")?.Value;
                 var statusCode = statusRaw != null && int.TryParse(statusRaw, out var s) ? s : (int?)null;
-                return new IPayResponse
+                return new PaymentResponse
                 {
                     RawXml = xml,
                     Pid = root.Element("pid")?.Value,
@@ -234,7 +261,7 @@ namespace MobilePaymentWeb.Services.IPay
             }
             catch (Exception ex)
             {
-                return new IPayResponse
+                return new PaymentResponse
                 {
                     RawXml = xml,
                     ErrorMessage = $"Failed to parse response: {ex.Message}"

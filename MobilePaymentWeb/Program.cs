@@ -1,3 +1,4 @@
+using MobilePaymentWeb.Services;
 using MobilePaymentWeb.Services.IPay;
 using MobilePaymentWeb.Services.SkidataMobilePay;
 
@@ -6,7 +7,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 builder.Services.Configure<SkidataOptions>(builder.Configuration.GetSection("Skidata"));
-builder.Services.AddSingleton(sp => new IPayClient(
+builder.Services.AddSingleton<IPaymentProvider>(sp => new IPayClient(
     mchId: builder.Configuration["IPay:MchId"] ?? throw new InvalidOperationException("IPay:MchId is not configured"),
     signKey: builder.Configuration["IPay:SignKey"] ?? throw new InvalidOperationException("IPay:SignKey is not configured"),
     logger: sp.GetRequiredService<ILogger<IPayClient>>(),
