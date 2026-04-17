@@ -1,16 +1,14 @@
-﻿@model MobilePaymentWeb.Models.ParkingSessionViewModel
+﻿@model MobilePaymentWeb.Models.ParkingSessionErrorModel
 <div class="card">
-    <h1>Вашу паркувальну сесію не знайдено</h1>
+    <h1>@Model.ErrorMessage</h1>
     <div class="section">
         @{
-            if (Model.CarLP != null)
+            if (Model.Identifier != null)
             {
         
-                <div class="label">Номер авто:</div>
-                <div class="value">@Model.CarLP</div>
+                <div class="label">Номер авто/квиток:</div>
+                <div class="value">@Model.Identifier</div>
             }
         }
     </div>
-    <h1>Спробуйте відсканувати талон</h1>
-    <hr />
 </div>

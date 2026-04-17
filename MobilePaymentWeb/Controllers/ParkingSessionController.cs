@@ -43,25 +43,27 @@ namespace MobilePaymentWeb.Controllers
         {
 
             Identification ticketId;
-
+            string? identifier = null;
             if (!string.IsNullOrEmpty(ticket))
             {
-                if (!System.Text.RegularExpressions.Regex.IsMatch(ticket, @"^\d{1,20}$"))
+                identifier = ticket;
+                if (!System.Text.RegularExpressions.Regex.IsMatch(identifier, @"^\d{1,20}$"))
                 {
                     ViewBag.Error = "Невірний формат талону";
                     return View("LicensePlateForm");
                 }
-                ticketId = new GenericIdentification { Identificator = ticket, Type = "PARK" };
+                ticketId = new GenericIdentification { Identificator = identifier, Type = "PARK" };
             }
             else if (!string.IsNullOrEmpty(licensePlate))
             {
-                licensePlate = ConvertToLatin(licensePlate.Trim().ToUpper());
-                if (!System.Text.RegularExpressions.Regex.IsMatch(licensePlate, @"^[A-Z0-9]{3,10}$"))
+                identifier = licensePlate;
+                licensePlate = ConvertToLatin(identifier.Trim().ToUpper());
+                if (!System.Text.RegularExpressions.Regex.IsMatch(identifier, @"^[A-Z0-9]{3,10}$"))
                 {
                     ViewBag.Error = "Невірний формат номеру авто";
                     return View("LicensePlateForm");
                 }
-                ticketId = new LicensePlateIdentification { LicenseNo = licensePlate, Country = CountryCodeEnum.UA };
+                ticketId = new LicensePlateIdentification { LicenseNo = identifier, Country = CountryCodeEnum.UA };
             }
             else
             {    
@@ -117,12 +119,23 @@ namespace MobilePaymentWeb.Controllers
                     ParkDuration = $"{(int)duration.TotalHours:D2}:{duration.Minutes:D2}"
                 };
             }
+            catch (FaultException ex)
+            {
+                var fault = SkidataFault.Parse(ex.Message);
+                var error = new ParkingSessionErrorModel
+                {
+                    Identifier = identifier,
+                    ErrorMessage = fault.FriendlyMessage,
+                };
+                return View("ParkingSessionError", error);
+            }
             catch (Exception ex)
             {
                 // Обробка помилок при виклику сервісу
                 ViewBag.Error = "Помилка при отриманні даних: " + ex.Message;
                 return View("Error");
             }
+            
             finally
             {
                 if (client.State == System.ServiceModel.CommunicationState.Faulted)
