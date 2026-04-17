@@ -58,7 +58,7 @@ namespace MobilePaymentWeb.Services.IPay
             };
             var xml = BuildPaymentRequestXml(iPayRequest);
             var responseXml = await PostAsync(xml);
-            var iPayResponse = ParsePaymentResponse(responseXml);
+            IPayResponse iPayResponse = ParsePaymentResponse(responseXml);
 
             return new PaymentResponse
             {
@@ -159,8 +159,7 @@ namespace MobilePaymentWeb.Services.IPay
                         new XElement("amount", (int)req.Amount),
                         new XElement("currency", req.Currency),
                         new XElement("desc", req.Description),
-                        //new XElement("info", new XCData(System.Text.Json.JsonSerializer.Serialize(req.Info)))
-                        new XElement("info", new XCData(System.Text.Json.JsonSerializer.Serialize(req.Info)))
+                        new XElement("info", System.Text.Json.JsonSerializer.Serialize(req.Info))
 
                     )
                 ),
@@ -240,7 +239,7 @@ namespace MobilePaymentWeb.Services.IPay
         #endregion
 
         #region Response parser
-        private static PaymentResponse ParsePaymentResponse(string xml)
+        private static IPayResponse ParsePaymentResponse(string xml)
         {
             try
             {
@@ -249,7 +248,7 @@ namespace MobilePaymentWeb.Services.IPay
 
                 var statusRaw = root.Element("status")?.Value;
                 var statusCode = statusRaw != null && int.TryParse(statusRaw, out var s) ? s : (int?)null;
-                return new PaymentResponse
+                IPayResponse res = new IPayResponse
                 {
                     RawXml = xml,
                     Pid = root.Element("pid")?.Value,
@@ -258,10 +257,11 @@ namespace MobilePaymentWeb.Services.IPay
                     SaltResponse = root.Element("auth")?.Element("salt")?.Value,
                     SignResponse = root.Element("auth")?.Element("sign")?.Value,
                 };
+                return res;
             }
             catch (Exception ex)
             {
-                return new PaymentResponse
+                return new IPayResponse
                 {
                     RawXml = xml,
                     ErrorMessage = $"Failed to parse response: {ex.Message}"
