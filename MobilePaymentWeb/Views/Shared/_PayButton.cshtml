@@ -1,8 +1,10 @@
 ﻿@model MobilePaymentWeb.Models.ParkingSessionViewModel
 
-    <form method="post" asp-action="Pay">
-        <input type="hidden" asp-for="ParkDuration" />
-        <input type="hidden" asp-for="Price" />
-        <button type="submit" class="pay-btn">СПЛАТИТИ</button>
-    </form>
+<form method="post" asp-action="Pay">
+    <input type="hidden" asp-for="ParkDuration" />
+    <input type="hidden" asp-for="Price" />
+    <input type="hidden" asp-for="CarLP" />
+    <input type="hidden" asp-for="EntryTime" />
+    <button type="submit" class="pay-btn">СПЛАТИТИ</button>
+</form>
 
