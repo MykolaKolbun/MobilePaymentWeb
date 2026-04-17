@@ -91,7 +91,9 @@ namespace MobilePaymentWeb.Controllers
                     ViewBag.Error = "Картка не знайдена або не активна.";
                     return View("ParkingSessionError");
                 }
-                var duration = DateTime.Now - cardInfo.CardInfo.EntryDateTime;
+                var kyivZone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Kiev");
+                var now = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, kyivZone);
+                var duration = now - cardInfo.CardInfo.EntryDateTime;
                 if (cardInfo.CardInfo.ExitDateTime > new DateTime(1994, 1, 1))
                 {
                     duration = cardInfo.CardInfo.ExitDateTime - cardInfo.CardInfo.EntryDateTime;
