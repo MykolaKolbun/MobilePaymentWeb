@@ -30,15 +30,25 @@ jobs:
           tags: ghcr.io/mykolakolbun/mobilepaymentweb:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          
+
+      - name: Install cloudflared
+        run: |
+          curl -L https://pkg.cloudflare.com/cloudflare-main.gpg | sudo tee /usr/share/keyrings/cloudflare-main.gpg >/dev/null
+          echo 'deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared any main' | sudo tee /etc/apt/sources.list.d/cloudflared.list
+          sudo apt update && sudo apt install cloudflared -y
+
       - name: Deploy to Raspberry Pi
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.PI_HOST }}
-          username: ${{ secrets.PI_USER }}
-          key: ${{ secrets.PI_SSH_PRIVATE_KEY }}
-          script: |
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s' "${{ secrets.PI_SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          cat >> ~/.ssh/config << EOF
+          Host ssh.alternatiview.com.ua
+            ProxyCommand cloudflared access ssh --hostname %h
+            StrictHostKeyChecking no
+          EOF
+          ssh ${{ secrets.PI_USER }}@ssh.alternatiview.com.ua "
             cd ~/apps/web &&
             docker compose pull &&
             docker compose up -d
-          
+          "
