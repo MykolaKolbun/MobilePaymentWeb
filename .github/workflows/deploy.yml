@@ -28,7 +28,9 @@ jobs:
           platforms: linux/arm64
           push: true
           tags: ghcr.io/mykolakolbun/mobilepaymentweb:latest
-
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          
       - name: Deploy to Raspberry Pi
         uses: appleboy/ssh-action@v1.0.3
         with:
