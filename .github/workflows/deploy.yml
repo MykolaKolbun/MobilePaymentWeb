@@ -30,13 +30,13 @@ jobs:
           tags: ghcr.io/mykolakolbun/mobilepaymentweb:latest
 
       - name: Deploy to Raspberry Pi
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.PI_SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan ${{ secrets.PI_HOST }} >> ~/.ssh/known_hosts
-          ssh ${{ secrets.PI_USER }}@${{ secrets.PI_HOST }} "
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PI_HOST }}
+          username: ${{ secrets.PI_USER }}
+          key: ${{ secrets.PI_SSH_PRIVATE_KEY }}
+          script: |
             cd ~/apps/web &&
             docker compose pull &&
             docker compose up -d
-          "
+          
