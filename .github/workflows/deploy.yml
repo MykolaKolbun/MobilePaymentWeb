@@ -48,7 +48,7 @@ jobs:
             StrictHostKeyChecking no
           EOF
           ssh ${{ secrets.PI_USER }}@ssh.alternatiview.com.ua "
-            cd ~/apps/web &&
+            cd ~/mobilepaymentweb &&
             docker compose pull &&
             docker compose up -d
           "
