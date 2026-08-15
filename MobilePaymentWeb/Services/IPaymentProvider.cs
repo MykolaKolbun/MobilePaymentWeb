@@ -6,5 +6,7 @@ namespace MobilePaymentWeb.Services
     {
         Task<PaymentResponse> CreatePaymentAsync(PaymentRequest request);
         Task<PaymentStatusResponse> GetPaymentStatusAsync(string pid);
+        Task<PaymentStatusResponse> CompletePaymentAsync(string pid);
+        Task<PaymentStatusResponse> ReversePaymentAsync(string pid);
     }
 }

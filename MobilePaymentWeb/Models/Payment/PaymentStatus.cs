@@ -4,6 +4,7 @@
     {
         Unknown = 0,
         Registered = 1,
+        Authorized = 3,
         Failed = 4,
         Success = 5,
         Cancelled = 9

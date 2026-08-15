@@ -3,12 +3,15 @@
 }
 
 <div class="card">
-    <img src="~/images/alternatiview_logo_big.svg" alt="Alternatiview" style="width: 100%; margin-bottom: 5px;" />
+    @if (!string.IsNullOrEmpty(ViewBag.Logo as string))
+    {
+        <img src="~/images/@ViewBag.Logo" alt="@ViewBag.FacilityName" style="width: 100%; margin-bottom: 5px;" />
+    }
     @if (ViewBag.Error != null)
     {
         <div class="error">@ViewBag.Error</div>
     }
-    <form id="lf" method="get" asp-action="ParkingSession">
+    <form id="lf" method="get" asp-action="ParkingSession" asp-route-facilityId="@ViewBag.FacilityId">
         <div class="section">
             <div class="label">Введіть номер авто:</div>
             <input type="text" name="licensePlate" placeholder="AA0000AA"

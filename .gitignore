@@ -480,3 +480,6 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Stray RDP connection files — never commit or serve from wwwroot
+*.rdp

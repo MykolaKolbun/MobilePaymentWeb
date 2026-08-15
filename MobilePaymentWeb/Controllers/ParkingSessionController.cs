@@ -1,10 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Caching.Memory;
 using MobilePaymentWeb.Models;
+using MobilePaymentWeb.Models.Fiscal;
 using MobilePaymentWeb.Models.Payment;
 using MobilePaymentWeb.Services;
-using MobilePaymentWeb.Services.IPay;
-using MobilePaymentWeb.Services.IPay.Models;
 using MobilePaymentWeb.Services.SkidataMobilePay;
 using SwebMobileService;
 using System.ServiceModel;
@@ -14,40 +13,48 @@ using static MobilePaymentWeb.Helpers.Helpers;
 
 namespace MobilePaymentWeb.Controllers
 {
+    [Route("{facilityId}")]
     public class ParkingSessionController : Controller
     {
-        private readonly SkidataOptions _skidata;
-        private readonly IPaymentProvider _paymentProvider;
+        private readonly Dictionary<string, FacilityOptions> _facilities;
+        private readonly IPaymentProviderFactory _paymentProviderFactory;
+        private readonly IFiscalProviderFactory _fiscalProviderFactory;
+        private readonly IMemoryCache _cache;
+        private readonly ILogger<ParkingSessionController> _logger;
 
-        public ParkingSessionController(IOptions<SkidataOptions> skidataOptions, IPaymentProvider paymentProvider)
+        public ParkingSessionController(
+            Dictionary<string, FacilityOptions> facilities,
+            IPaymentProviderFactory paymentProviderFactory,
+            IFiscalProviderFactory fiscalProviderFactory,
+            IMemoryCache cache,
+            ILogger<ParkingSessionController> logger)
         {
-            _skidata = skidataOptions.Value;
-            _paymentProvider = paymentProvider;
+            _facilities = facilities;
+            _paymentProviderFactory = paymentProviderFactory;
+            _fiscalProviderFactory = fiscalProviderFactory;
+            _cache = cache;
+            _logger = logger;
         }
 
-        /// <summary>
-        /// Retrieves and displays information about a parking session based on a ticket number or license plate.
-        /// </summary>
-        /// <remarks>If both parameters are null or empty, the method displays a form for entering a
-        /// license plate. If the parking session cannot be found or an error occurs while retrieving data, an error
-        /// view is returned. The method communicates with an external parking management service and may display
-        /// different views depending on the session state (active or exited).</remarks>
-        /// <param name="ticket">The parking ticket number used to identify the parking session. If specified, this value takes precedence
-        /// over the license plate. Can be null or empty.</param>
-        /// <param name="licensePlate">The vehicle's license plate number used to identify the parking session if no ticket is provided. Can be
-        /// null or empty.</param>
-        /// <returns>An IActionResult that renders the parking session view with session details, an error view if the session
-        /// cannot be found, or a form view if no identification is provided.</returns>
-        [HttpGet]
-        public async Task<IActionResult> ParkingSession(string? ticket, string? licensePlate)
+        [HttpGet("")]
+        [HttpGet("{ticket}")]
+        public async Task<IActionResult> ParkingSession(string facilityId, string? ticket, string? licensePlate)
         {
+            if (!_facilities.TryGetValue(facilityId, out var facility))
+                return View("InvalidFacility");
+
+            var skidata = facility.Skidata;
+            ViewBag.FacilityId = facilityId;
+            ViewBag.Logo = facility.Display.Logo;
+            ViewBag.FacilityName = facility.Display.Name;
 
             Identification ticketId;
             string? identifier = null;
+
             if (!string.IsNullOrEmpty(ticket))
             {
                 identifier = ticket;
-                if (!System.Text.RegularExpressions.Regex.IsMatch(identifier, @"^\d{1,20}$"))
+                if (!System.Text.RegularExpressions.Regex.IsMatch(identifier, @"^\d{1,30}$"))
                 {
                     ViewBag.Error = "Невірний формат талону";
                     return View("LicensePlateForm");
@@ -66,28 +73,15 @@ namespace MobilePaymentWeb.Controllers
                 ticketId = new LicensePlateIdentification { LicenseNo = identifier, Country = CountryCodeEnum.UA };
             }
             else
-            {    
+            {
                 return View("LicensePlateForm");
             }
 
-            var binding = new CustomBinding(
-                    new TextMessageEncodingBindingElement(MessageVersion.Soap11, Encoding.UTF8),
-                    new HttpsTransportBindingElement
-                    {
-                        AuthenticationScheme = System.Net.AuthenticationSchemes.Basic
-                    }
-            );
-            var endpoint = new EndpointAddress(_skidata.Endpoint);
-            var client = new ParkingTicketManagementServiceV4Client(binding, endpoint);
-
-            client.Endpoint.EndpointBehaviors.Add(new MessageLogger());
-            client.ClientCredentials.UserName.UserName = _skidata.Login;
-            client.ClientCredentials.UserName.Password = _skidata.Password;
-
+            var client = CreateSkidataClient(skidata);
             ParkingSessionViewModel model;
             try
             {
-                var cardInfo = await client.GetCardInfoAsync($"APT.FAC.{_skidata.FacilityID}", ticketId, _skidata.ExternalDeviceID.ToString(), _skidata.ParkingDeviceID.ToString());
+                var cardInfo = await client.GetCardInfoAsync($"APT.FAC.{skidata.FacilityID}", ticketId, skidata.ExternalDeviceID.ToString(), skidata.ParkingDeviceID.ToString());
                 if (cardInfo.CardInfo == null)
                 {
                     ViewBag.Error = "Картка не знайдена або не активна.";
@@ -101,22 +95,26 @@ namespace MobilePaymentWeb.Controllers
                     duration = cardInfo.CardInfo.ExitDateTime - cardInfo.CardInfo.EntryDateTime;
                     model = new ParkingSessionViewModel
                     {
+                        FacilityId = facilityId,
                         ExitTime = cardInfo.CardInfo.ExitDateTime.ToString("dd.MM.yyyy HH:mm"),
                         EntryTime = cardInfo.CardInfo.EntryDateTime.ToString("dd.MM.yyyy HH:mm"),
                         CarLP = cardInfo.CardInfo.LicenseNumber,
                         ParkDuration = $"{(int)duration.TotalHours:D2}:{duration.Minutes:D2}"
-                        
                     };
                     return View("ParkingSessionExit", model);
                 }
-                var rateInfo = await client.GetRateInfoAsync($"APT.FAC.{_skidata.FacilityID}", ticketId, _skidata.ExternalDeviceID.ToString(), _skidata.ParkingDeviceID.ToString());
-                
+                var rateInfo = await client.GetRateInfoAsync($"APT.FAC.{skidata.FacilityID}", ticketId, skidata.ExternalDeviceID.ToString(), skidata.ParkingDeviceID.ToString());
+
                 model = new ParkingSessionViewModel
                 {
+                    FacilityId = facilityId,
                     Price = rateInfo.RateInfo.Price.Amount,
                     EntryTime = cardInfo.CardInfo.EntryDateTime.ToString("dd.MM.yyyy HH:mm"),
                     CarLP = cardInfo.CardInfo.LicenseNumber,
-                    ParkDuration = $"{(int)duration.TotalHours:D2}:{duration.Minutes:D2}"
+                    ParkDuration = $"{(int)duration.TotalHours:D2}:{duration.Minutes:D2}",
+                    TicketIdentifier = identifier!,
+                    IdentifierType = !string.IsNullOrEmpty(ticket) ? "PARK" : "LP",
+                    RateEnd = rateInfo.RateInfo.RateEndSpecified ? rateInfo.RateInfo.RateEnd : null
                 };
             }
             catch (FaultException ex)
@@ -131,14 +129,12 @@ namespace MobilePaymentWeb.Controllers
             }
             catch (Exception ex)
             {
-                // Обробка помилок при виклику сервісу
                 ViewBag.Error = "Помилка при отриманні даних: " + ex.Message;
                 return View("Error");
             }
-            
             finally
             {
-                if (client.State == System.ServiceModel.CommunicationState.Faulted)
+                if (client.State == CommunicationState.Faulted)
                     client.Abort();
                 else
                     client.Close();
@@ -147,26 +143,20 @@ namespace MobilePaymentWeb.Controllers
             return View(model);
         }
 
-        /// <summary>
-        /// Initiates a payment process for a parking session using the provided session details.
-        /// </summary>
-        /// <remarks>If the payment request is successful, the method stores the payment identifier in the
-        /// session and redirects the user to the payment provider. If the request fails, an error message is displayed.
-        /// The method is intended to be used as an HTTP POST action.</remarks>
-        /// <param name="model">The parking session information, including price, car license plate, and entry time, used to create the
-        /// payment request. Cannot be null.</param>
-        /// <returns>A task that represents the asynchronous operation. The task result contains an IActionResult that redirects
-        /// the user to the payment page if the payment request is successful; otherwise, displays an error view.</returns>
-        [HttpPost]
-        public async Task<IActionResult> Pay(ParkingSessionViewModel model)
+        [HttpPost("Pay")]
+        public async Task<IActionResult> Pay(string facilityId, ParkingSessionViewModel model)
         {
-            
-            var response = await _paymentProvider.CreatePaymentAsync(new PaymentRequest
+            if (!_facilities.ContainsKey(facilityId))
+                return View("InvalidFacility");
+
+            var paymentProvider = _paymentProviderFactory.GetProvider(facilityId);
+            var baseUrl = $"{Request.Scheme}://{Request.Host}";
+            var response = await paymentProvider.CreatePaymentAsync(new PaymentRequest
             {
                 Amount = model.Price * 100,
-                Description = $"Послуга паркування",
-                SuccessUrl = "https://mobilepaymentweb-production.up.railway.app/success",
-                FailUrl = "https://mobilepaymentweb-production.up.railway.app/fail",
+                Description = "Послуга паркування",
+                SuccessUrl = $"{baseUrl}/success",
+                FailUrl = $"{baseUrl}/fail",
                 Lifetime = 0.5,
                 Lang = "uk",
                 Currency = "UAH",
@@ -174,57 +164,206 @@ namespace MobilePaymentWeb.Controllers
             });
             if (response.IsSuccess)
             {
-                HttpContext.Session.SetString("ipay_pid", response.Pid!);
+                HttpContext.Session.SetString("payment_pid", response.Pid!);
+                HttpContext.Session.SetString("facilityId", facilityId);
+                HttpContext.Session.SetString("payment_amount", model.Price.ToString());
+                HttpContext.Session.SetString("ticket_id", model.TicketIdentifier);
+                HttpContext.Session.SetString("ticket_type", model.IdentifierType);
+                if (model.RateEnd.HasValue)
+                    HttpContext.Session.SetString("rate_end", model.RateEnd.Value.ToString("O"));
                 return Redirect(response.PaymentUrl!);
             }
             ViewBag.Error = "Помилка при створенні платежу: " + response.ErrorMessage;
             return View("Error");
         }
 
-        /// <summary>
-        /// Retrieves the current payment status for the session's payment identifier.
-        /// </summary>
-        /// <remarks>This method expects a valid payment identifier to be present in the session under the
-        /// key "ipay_pid". If the session does not contain this key or the payment identifier is invalid, the returned
-        /// status code may indicate an error or unknown status. This endpoint is typically used to poll for payment
-        /// status updates after initiating a payment process.</remarks>
-        /// <returns>An <see cref="JsonResult"/> containing an object with the payment status code for the current session.</returns>
         [HttpGet("/status")]
         public async Task<IActionResult> CheckPaymentStatus()
         {
-            var pid = HttpContext.Session.GetString("ipay_pid");
-            var status = await _paymentProvider.GetPaymentStatusAsync(pid);
-            return Json(new { statusCode = (int)status.Status });
+            var pid = HttpContext.Session.GetString("payment_pid");
+            var facilityId = HttpContext.Session.GetString("facilityId") ?? string.Empty;
+            var paymentProvider = _paymentProviderFactory.GetProvider(facilityId);
+            var status = await paymentProvider.GetPaymentStatusAsync(pid);
+
+            if (status.Status == Models.Payment.PaymentStatus.Authorized)
+            {
+                var bookedKey = $"booked_{pid}";
+                if (!_cache.TryGetValue(bookedKey, out bool _))
+                {
+                    var bookingOk = await BookPaymentAsync(pid, facilityId);
+                    if (bookingOk)
+                    {
+                        await paymentProvider.CompletePaymentAsync(pid ?? string.Empty);
+                        _cache.Set(bookedKey, true, TimeSpan.FromHours(1));
+                    }
+                    else
+                    {
+                        await paymentProvider.ReversePaymentAsync(pid ?? string.Empty);
+                        return Json(new { statusCode = (int)Models.Payment.PaymentStatus.Cancelled, hasFiscal = false });
+                    }
+                }
+                // iPay transitions to status 5 after completion — client polls again, fiscal handled there
+                return Json(new { statusCode = (int)Models.Payment.PaymentStatus.Authorized, hasFiscal = false });
+            }
+
+            if (status.Status == Models.Payment.PaymentStatus.Success)
+            {
+                var bookedKey = $"booked_{pid}";
+                if (!_cache.TryGetValue(bookedKey, out bool _))
+                {
+                    await BookPaymentAsync(pid, facilityId);
+                    _cache.Set(bookedKey, true, TimeSpan.FromHours(1));
+                }
+
+                var cacheKey = $"receipt_png_{pid}";
+                var hasFiscal = _cache.TryGetValue(cacheKey, out byte[]? _);
+
+                if (!hasFiscal)
+                {
+                    var fiscal = _fiscalProviderFactory.GetProvider(facilityId);
+                    if (fiscal != null && decimal.TryParse(HttpContext.Session.GetString("payment_amount"), out var amount))
+                    {
+                        var fiscalResult = await fiscal.CreateReceiptAsync(new FiscalRequest
+                        {
+                            Amount = amount,
+                            Description = "Послуга паркування",
+                            PaymentType = "CARD",
+                            ExternalId = pid ?? string.Empty
+                        });
+                        if (fiscalResult.IsSuccess && fiscalResult.ReceiptPng != null)
+                        {
+                            _cache.Set(cacheKey, fiscalResult.ReceiptPng, TimeSpan.FromMinutes(5));
+                            hasFiscal = true;
+                        }
+                    }
+                }
+
+                return Json(new { statusCode = (int)status.Status, hasFiscal });
+            }
+
+            return Json(new { statusCode = (int)status.Status, hasFiscal = false });
         }
 
-        /// <summary>
-        /// Handles the callback for a successful payment and displays the payment success view to the user.
-        /// </summary>
-        /// <remarks>This action is typically invoked after a payment process completes successfully. It
-        /// can be used as a redirect target from payment gateways or internal payment status checks.</remarks>
-        /// <returns>A view that confirms the successful completion of the payment.</returns>
+        [HttpGet("/receipt-image")]
+        public IActionResult ReceiptImage()
+        {
+            var pid = HttpContext.Session.GetString("payment_pid");
+            if (!string.IsNullOrEmpty(pid) && _cache.TryGetValue($"receipt_png_{pid}", out byte[]? png) && png != null)
+                return File(png, "image/png");
+            return NotFound();
+        }
+
         [HttpGet("/success")]
         public IActionResult PaymentSuccess()
         {
-            var pid = HttpContext.Session.GetString("ipay_pid");
+            var pid = HttpContext.Session.GetString("payment_pid");
             if (string.IsNullOrEmpty(pid))
-                return RedirectToAction("ParkingSession");
+                return NotFound();
 
             return View();
         }
 
-        /// <summary>
-        /// Returns the view that informs the user of a failed payment attempt.
-        /// </summary>
-        /// <returns>An <see cref="IActionResult"/> that renders the payment failure view to the client.</returns>
         [HttpGet("/fail")]
         public IActionResult PaymentFail()
         {
-            var pid = HttpContext.Session.GetString("ipay_pid");
+            var pid = HttpContext.Session.GetString("payment_pid");
             if (string.IsNullOrEmpty(pid))
-                return RedirectToAction("ParkingSession");
+                return NotFound();
 
             return View();
+        }
+
+        private async Task<bool> BookPaymentAsync(string? pid, string facilityId)
+        {
+            if (!_facilities.TryGetValue(facilityId, out var facility)) return false;
+
+            var ticketIdStr = HttpContext.Session.GetString("ticket_id");
+            var ticketType = HttpContext.Session.GetString("ticket_type");
+            var ticketId = BuildTicketId(ticketIdStr, ticketType);
+            if (ticketId == null) return false;
+
+            var skidata = facility.Skidata;
+            var client = CreateSkidataClient(skidata);
+            try
+            {
+                Money bookingPrice;
+
+                var rateEndStr = HttpContext.Session.GetString("rate_end");
+                var rateStillValid = rateEndStr != null
+                    && DateTime.TryParse(rateEndStr, null, System.Globalization.DateTimeStyles.RoundtripKind, out var rateEnd)
+                    && DateTime.UtcNow < rateEnd;
+
+                if (rateStillValid
+                    && decimal.TryParse(HttpContext.Session.GetString("payment_amount"), out var paidAmount))
+                {
+                    bookingPrice = new Money { Amount = paidAmount, CurrencyCode = CurrencyCodeEnum.UAH };
+                }
+                else
+                {
+                    var rateInfo = await client.GetRateInfoAsync(
+                        $"APT.FAC.{skidata.FacilityID}", ticketId,
+                        skidata.ExternalDeviceID.ToString(), skidata.ParkingDeviceID.ToString());
+                    bookingPrice = rateInfo.RateInfo.Price;
+
+                    if (decimal.TryParse(HttpContext.Session.GetString("payment_amount"), out var paid)
+                        && paid != bookingPrice.Amount)
+                    {
+                        _logger.LogWarning(
+                            "BookPayment price drift: paid {Paid} UAH, current rate {Current} UAH, pid {Pid}",
+                            paid, bookingPrice.Amount, pid);
+                    }
+                }
+
+                await client.BookPaymentAsync(
+                    $"APT.FAC.{skidata.FacilityID}",
+                    ticketId,
+                    new CreditCardPaymentItem
+                    {
+                        PaymentItemId = pid ?? string.Empty,
+                        Amount = bookingPrice,
+                        CreditCardCompany = "ONLINE",
+                        ReferenceNumber = pid ?? string.Empty,
+                        ReceiptData = string.Empty
+                    },
+                    skidata.ExternalDeviceID.ToString(),
+                    skidata.ParkingDeviceID.ToString());
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "BookPayment failed for pid {Pid}", pid);
+                return false;
+            }
+            finally
+            {
+                if (client.State == CommunicationState.Faulted) client.Abort();
+                else client.Close();
+            }
+        }
+
+        private static Identification? BuildTicketId(string? id, string? type) =>
+            (id, type) switch
+            {
+                ({ } i, "PARK") => new GenericIdentification { Identificator = i, Type = "PARK" },
+                ({ } i, "LP") => new LicensePlateIdentification { LicenseNo = i, Country = CountryCodeEnum.UA },
+                _ => null
+            };
+
+        private static ParkingTicketManagementServiceV4Client CreateSkidataClient(SkidataOptions skidata)
+        {
+            var binding = new CustomBinding(
+                new TextMessageEncodingBindingElement(MessageVersion.Soap11, Encoding.UTF8),
+                new HttpsTransportBindingElement
+                {
+                    AuthenticationScheme = System.Net.AuthenticationSchemes.Basic
+                }
+            );
+            var client = new ParkingTicketManagementServiceV4Client(binding, new EndpointAddress(skidata.Endpoint));
+            client.Endpoint.EndpointBehaviors.Add(new MessageLogger());
+            client.ClientCredentials.UserName.UserName = skidata.Login;
+            client.ClientCredentials.UserName.Password = skidata.Password;
+            return client;
         }
     }
 }

@@ -93,6 +93,25 @@ namespace MobilePaymentWeb.Services.IPay
         /// </summary>
         /// <param name="pid"></param>
         /// <returns></returns>
+        public Task<PaymentStatusResponse> CompletePaymentAsync(string pid)
+            => SendActionAsync("completion", pid);
+
+        public Task<PaymentStatusResponse> ReversePaymentAsync(string pid)
+            => SendActionAsync("reversal", pid);
+
+        private async Task<PaymentStatusResponse> SendActionAsync(string action, string pid)
+        {
+            var xml = BuildPaymentStatusXml(action, pid);
+            var responseXml = await PostAsync(xml);
+            var r = ParsePaymentResponse(responseXml);
+            return new PaymentStatusResponse
+            {
+                Pid = r.Pid,
+                Status = (PaymentStatus)(r.StatusCode ?? 0),
+                ErrorMessage = r.ErrorMessage
+            };
+        }
+
         public async Task<byte[]> GetReceiptAsync(string pid)
         {
             var xml = BuildPaymentStatusXml("GetReceipt", pid);
