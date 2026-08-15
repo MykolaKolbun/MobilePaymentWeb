@@ -16,7 +16,7 @@ Integrates with **Skidata** parking management, **iPay.ua** payment gateway, and
 | `/status` | Payment status polling (JSON) |
 | `/receipt-image` | Fiscal receipt PNG (session-scoped) |
 
-**Example QR code URL:** `https://paypark.alternativeiw.com.ua/0330142/29031864033014200000630`
+**Example QR code URL:** `https://paypark.alternatiview.com.ua/0330142/29031864033014200000630`
 - `0330142` — facility ID (must match a key in `Facilities` config)
 - `29031864033014200000630` — parking ticket number
 
