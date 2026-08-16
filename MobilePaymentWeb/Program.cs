@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
 using MobilePaymentWeb.Services;
 using MobilePaymentWeb.Services.IPay;
 using MobilePaymentWeb.Services.SkidataMobilePay;
@@ -22,7 +24,28 @@ builder.Services.AddSession(options =>
     options.Cookie.IsEssential = true;
 });
 
+// Honor X-Forwarded-Proto/For from the cloudflared tunnel so Request.Scheme is https
+// (correct iPay callback URLs, and no "https port" redirect warning). The container only
+// receives traffic from the local tunnel, so all forwarders are trusted.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
+// Persist DataProtection keys outside the container (mount a volume at /keys) so the
+// session-cookie keyring survives redeploys instead of regenerating each time.
+if (!builder.Environment.IsDevelopment())
+{
+    builder.Services.AddDataProtection()
+        .PersistKeysToFileSystem(new DirectoryInfo("/keys"))
+        .SetApplicationName("MobilePaymentWeb");
+}
+
 var app = builder.Build();
+
+app.UseForwardedHeaders();
 
 if (!app.Environment.IsDevelopment())
 {
