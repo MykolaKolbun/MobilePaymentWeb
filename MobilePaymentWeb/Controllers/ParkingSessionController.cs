@@ -317,13 +317,11 @@ namespace MobilePaymentWeb.Controllers
                 await client.BookPaymentAsync(
                     $"APT.FAC.{skidata.FacilityID}",
                     ticketId,
-                    new CreditCardPaymentItem
+                    new ManualPaymentItem
                     {
                         PaymentItemId = pid ?? string.Empty,
                         Amount = bookingPrice,
-                        CreditCardCompany = "ONLINE",
-                        ReferenceNumber = pid ?? string.Empty,
-                        ReceiptData = string.Empty
+                        PaymentType = skidata.BookingPaymentType
                     },
                     skidata.ExternalDeviceID.ToString(),
                     skidata.ParkingDeviceID.ToString());
