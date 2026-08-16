@@ -1,0 +1,51 @@
+name: Build and Deploy (silverbreeze / production)
+
+on:
+  push:
+    branches: [ silverbreeze ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    env:
+      # Deploy step is skipped until this repo secret is set (during production setup).
+      PROD_SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push AMD64 image (production)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: ghcr.io/mykolakolbun/mobilepaymentweb:prod
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Runs only after PROD_SSH_HOST (and the other PROD_* secrets) are configured.
+      # Adjust the SSH block to match how the prod host is reached (direct SSH shown here;
+      # switch to a cloudflared ProxyCommand like the stage workflow if the prod box uses a tunnel).
+      - name: Deploy to production
+        if: env.PROD_SSH_HOST != ''
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PROD_SSH_PRIVATE_KEY }}" | base64 -d > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan "$PROD_SSH_HOST" >> ~/.ssh/known_hosts
+          ssh ${{ secrets.PROD_SSH_USER }}@"$PROD_SSH_HOST" "
+            cd ~/mobilepaymentweb &&
+            docker compose pull &&
+            docker compose up -d
+          "
