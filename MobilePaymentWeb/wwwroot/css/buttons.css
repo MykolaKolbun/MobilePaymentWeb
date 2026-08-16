@@ -25,3 +25,28 @@ button {
     button:hover {
         background: #222;
     }
+
+.download-btn {
+    display: block;
+    width: 100%;
+    padding: 15px;
+    border: none;
+    border-radius: 10px;
+    background: #444;
+    color: white;
+    font-size: 18px;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    transition: 0.3s;
+    box-sizing: border-box;
+    margin-top: 12px;
+}
+
+.download-btn:hover {
+    background: #222;
+}
+
+.download-btn:active {
+    transform: scale(0.97);
+}

@@ -9,6 +9,7 @@
     </div>
     <div id="receipt-container" style="display:none; margin-top: 15px;">
         <img id="receipt-img" alt="Фіскальний чек" style="width: 100%; border-radius: 8px;" />
+        <a id="receipt-download" class="download-btn" download="receipt.png">Зберегти чек</a>
     </div>
 </div>
 
@@ -24,7 +25,9 @@
             if (data.hasFiscal) {
                 // Load the receipt only now — it doesn't exist at page-load time,
                 // and the cache-buster forces the fetch (a hardcoded src would have 404'd on load).
-                document.getElementById('receipt-img').src = '/receipt-image?t=' + Date.now();
+                var receiptUrl = '/receipt-image?t=' + Date.now();
+                document.getElementById('receipt-img').src = receiptUrl;
+                document.getElementById('receipt-download').href = receiptUrl;
                 document.getElementById('receipt-container').style.display = 'block';
             }
         } else if (data.statusCode === 4) {
