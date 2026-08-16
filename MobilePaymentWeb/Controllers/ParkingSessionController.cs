@@ -198,6 +198,7 @@ namespace MobilePaymentWeb.Controllers
                     }
                     else
                     {
+                        _logger.LogError("Booking failed after authorization for {Pid}; reversing iPay payment.", pid);
                         await paymentProvider.ReversePaymentAsync(pid ?? string.Empty);
                         return Json(new { statusCode = (int)Models.Payment.PaymentStatus.Cancelled, hasFiscal = false });
                     }
@@ -211,7 +212,11 @@ namespace MobilePaymentWeb.Controllers
                 var bookedKey = $"booked_{pid}";
                 if (!_cache.TryGetValue(bookedKey, out bool _))
                 {
-                    await BookPaymentAsync(pid, facilityId);
+                    var bookingOk = await BookPaymentAsync(pid, facilityId);
+                    if (!bookingOk)
+                        _logger.LogError(
+                            "Payment {Pid} succeeded but Skidata booking failed — customer charged, gate NOT opened. Manual action required.",
+                            pid);
                     _cache.Set(bookedKey, true, TimeSpan.FromHours(1));
                 }
 

@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.Extensions.Options;
 using MobilePaymentWeb.Services;
 using MobilePaymentWeb.Services.IPay;
+using MobilePaymentWeb.Services.Notifications;
 using MobilePaymentWeb.Services.SkidataMobilePay;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -43,9 +45,25 @@ if (!builder.Environment.IsDevelopment())
         .SetApplicationName("MobilePaymentWeb");
 }
 
+// Telegram admin alerting (global chat). BotToken/ChatId are secrets (env var / user-secrets).
+builder.Services.Configure<TelegramOptions>(builder.Configuration.GetSection("Telegram"));
+builder.Services.AddHttpClient();
+builder.Services.AddSingleton<TelegramNotifier>();
+builder.Services.AddSingleton<ITelegramNotifier>(sp => sp.GetRequiredService<TelegramNotifier>());
+builder.Services.AddHostedService(sp => sp.GetRequiredService<TelegramNotifier>());
+
 var app = builder.Build();
 
 app.UseForwardedHeaders();
+
+// Forward runtime Error/Critical (and our own Warnings) to Telegram, only when enabled.
+var telegramOptions = app.Services.GetRequiredService<IOptions<TelegramOptions>>().Value;
+if (telegramOptions.Enabled)
+{
+    app.Services.GetRequiredService<ILoggerFactory>()
+        .AddProvider(new TelegramLoggerProvider(
+            app.Services.GetRequiredService<ITelegramNotifier>(), telegramOptions.AppName));
+}
 
 if (!app.Environment.IsDevelopment())
 {
