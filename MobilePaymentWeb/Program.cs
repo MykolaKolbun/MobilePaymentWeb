@@ -60,9 +60,11 @@ app.UseForwardedHeaders();
 var telegramOptions = app.Services.GetRequiredService<IOptions<TelegramOptions>>().Value;
 if (telegramOptions.Enabled)
 {
+    var telegramNotifier = app.Services.GetRequiredService<ITelegramNotifier>();
     app.Services.GetRequiredService<ILoggerFactory>()
-        .AddProvider(new TelegramLoggerProvider(
-            app.Services.GetRequiredService<ITelegramNotifier>(), telegramOptions.AppName));
+        .AddProvider(new TelegramLoggerProvider(telegramNotifier, telegramOptions.AppName));
+    // One-time startup ping so a restart confirms the alerting pipeline end-to-end.
+    telegramNotifier.Notify($"✅ {telegramOptions.AppName}: alerting online.");
 }
 
 if (!app.Environment.IsDevelopment())
