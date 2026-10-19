@@ -129,8 +129,14 @@ namespace MobilePaymentWeb.Controllers
             }
             catch (Exception ex)
             {
-                ViewBag.Error = "Помилка при отриманні даних: " + ex.Message;
-                return View("Error");
+                _logger.LogError(ex,
+                    "Parking session lookup failed for facility {FacilityId}, identifier {Identifier}",
+                    facilityId, identifier);
+                return View("ParkingSessionError", new ParkingSessionErrorModel
+                {
+                    Identifier = identifier,
+                    ErrorMessage = "Помилка з'єднання з системою паркінгу. Спробуйте пізніше або зверніться до персоналу."
+                });
             }
             finally
             {
