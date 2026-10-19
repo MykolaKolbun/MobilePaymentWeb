@@ -91,7 +91,24 @@ namespace MobilePaymentWeb.Services.Fiscal.CheckBox
             var response = await client.PostAsync("api/v1/shifts", null);
             if (response.StatusCode != System.Net.HttpStatusCode.Conflict)
                 response.EnsureSuccessStatusCode();
-            _logger.LogInformation("CheckBox: shift opened");
+
+            // Shift opening is async on the fiscal server (CREATED/OPENING -> OPENED).
+            // Selling before the shift is OPENED returns 400, so wait for it here.
+            for (int i = 0; i < 10; i++)
+            {
+                var check = await client.GetAsync("api/v1/cashier/shift");
+                if (check.IsSuccessStatusCode)
+                {
+                    var shift = await check.Content.ReadFromJsonAsync<CheckBoxShift>(_json);
+                    if (shift?.Status == "OPENED")
+                    {
+                        _logger.LogInformation("CheckBox: shift opened");
+                        return;
+                    }
+                }
+                await Task.Delay(1000);
+            }
+            throw new TimeoutException("CheckBox shift did not reach OPENED status");
         }
 
         private async Task<Guid> CreateReceiptAsync(CheckBoxPurchase purchase)
