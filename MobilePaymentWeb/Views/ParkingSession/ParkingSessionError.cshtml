@@ -1,14 +1,15 @@
 ﻿@model MobilePaymentWeb.Models.ParkingSessionErrorModel
+@{
+    var message = Model?.ErrorMessage ?? ViewBag.Error as string ?? "Помилка";
+}
 <div class="card">
-    <h1>@Model.ErrorMessage</h1>
+    <h1>@message</h1>
     <div class="section">
-        @{
-            if (Model.Identifier != null)
-            {
-        
-                <div class="label">Номер авто/квиток:</div>
-                <div class="value">@Model.Identifier</div>
-            }
+        @if (Model?.Identifier != null)
+        {
+            <div class="label">Номер авто/квиток:</div>
+            <div class="value">@Model.Identifier</div>
         }
     </div>
+    <a href="/@ViewBag.FacilityId" class="download-btn">Спробувати ще</a>
 </div>
