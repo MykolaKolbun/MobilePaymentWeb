@@ -14,5 +14,11 @@
         /// booking the payment (sent as ManualPaymentItem.PaymentType). Default "WEB".
         /// </summary>
         public string BookingPaymentType { get; set; } = "WEB";
+
+        /// <summary>
+        /// When false, BookPayment is skipped entirely (no Skidata booking) — for testing
+        /// the payment/fiscal flow without registering real bookings. Default true.
+        /// </summary>
+        public bool BookingEnabled { get; set; } = true;
     }
 }

@@ -306,6 +306,14 @@ namespace MobilePaymentWeb.Controllers
         {
             if (!_facilities.TryGetValue(facilityId, out var facility)) return false;
 
+            if (!facility.Skidata.BookingEnabled)
+            {
+                _logger.LogInformation(
+                    "Facility {FacilityId}: Skidata booking disabled (test mode) — skipping BookPayment for pid {Pid}",
+                    facilityId, pid);
+                return true; // treat as booked so the payment/fiscal flow proceeds normally
+            }
+
             var ticketIdStr = HttpContext.Session.GetString("ticket_id");
             var ticketType = HttpContext.Session.GetString("ticket_type");
             var ticketId = BuildTicketId(ticketIdStr, ticketType);
