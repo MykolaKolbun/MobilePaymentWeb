@@ -12,7 +12,7 @@ namespace MobilePaymentWeb.Services
             foreach (var (key, facility) in facilities)
             {
                 if (facility.Fiscal.Provider == "CheckBox")
-                    _providers[key] = new CheckBoxFiscalClient(facility.Fiscal, logger);
+                    _providers[key] = new CheckBoxFiscalClient(key, facility.Fiscal, logger);
             }
         }
 

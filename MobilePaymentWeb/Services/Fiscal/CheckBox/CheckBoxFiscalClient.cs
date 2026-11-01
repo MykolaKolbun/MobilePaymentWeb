@@ -7,14 +7,16 @@ namespace MobilePaymentWeb.Services.Fiscal.CheckBox
 {
     public class CheckBoxFiscalClient : IFiscalProvider
     {
+        private readonly string _facilityId;
         private readonly FiscalOptions _options;
         private readonly ILogger<CheckBoxFiscalClient> _logger;
         private string? _token;
 
         private static readonly JsonSerializerOptions _json = new(JsonSerializerDefaults.Web);
 
-        public CheckBoxFiscalClient(FiscalOptions options, ILogger<CheckBoxFiscalClient> logger)
+        public CheckBoxFiscalClient(string facilityId, FiscalOptions options, ILogger<CheckBoxFiscalClient> logger)
         {
+            _facilityId = facilityId;
             _options = options;
             _logger = logger;
         }
@@ -40,7 +42,7 @@ namespace MobilePaymentWeb.Services.Fiscal.CheckBox
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "CheckBox fiscal receipt failed");
+                _logger.LogError(ex, "Facility {FacilityId}: CheckBox fiscal receipt failed", _facilityId);
                 return new FiscalResponse { IsSuccess = false, ErrorMessage = ex.Message };
             }
         }

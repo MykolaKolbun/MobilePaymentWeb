@@ -15,8 +15,9 @@
 </div>
 
 <script>
+    const facilityId = '@ViewBag.FacilityId';
     const interval = setInterval(async () => {
-        const res = await fetch('/status');
+        const res = await fetch('/' + facilityId + '/status');
         const data = await res.json();
 
         if (data.statusCode === 5) {
@@ -26,7 +27,7 @@
             if (data.hasFiscal) {
                 // Load the receipt only now — it doesn't exist at page-load time,
                 // and the cache-buster forces the fetch (a hardcoded src would have 404'd on load).
-                var receiptUrl = '/receipt-image?t=' + Date.now();
+                var receiptUrl = '/' + facilityId + '/receipt-image?t=' + Date.now();
                 document.getElementById('receipt-img').src = receiptUrl;
                 document.getElementById('receipt-download').href = receiptUrl;
                 document.getElementById('receipt-container').style.display = 'block';

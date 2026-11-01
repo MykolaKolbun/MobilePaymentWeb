@@ -164,8 +164,8 @@ namespace MobilePaymentWeb.Controllers
             {
                 Amount = model.Price * 100,
                 Description = "Послуга паркування",
-                SuccessUrl = $"{baseUrl}/success",
-                FailUrl = $"{baseUrl}/fail",
+                SuccessUrl = $"{baseUrl}/{facilityId}/success",
+                FailUrl = $"{baseUrl}/{facilityId}/fail",
                 Lifetime = 0.5,
                 Lang = "uk",
                 Currency = "UAH",
@@ -186,17 +186,19 @@ namespace MobilePaymentWeb.Controllers
             return View("Error");
         }
 
-        [HttpGet("/status")]
-        public async Task<IActionResult> CheckPaymentStatus()
+        [HttpGet("status")]
+        public async Task<IActionResult> CheckPaymentStatus(string facilityId)
         {
+            if (!_facilities.ContainsKey(facilityId))
+                return NotFound();
+
             var pid = HttpContext.Session.GetString("payment_pid");
-            var facilityId = HttpContext.Session.GetString("facilityId") ?? string.Empty;
             var paymentProvider = _paymentProviderFactory.GetProvider(facilityId);
             var status = await paymentProvider.GetPaymentStatusAsync(pid);
 
             if (status.Status == Models.Payment.PaymentStatus.Authorized)
             {
-                var bookedKey = $"booked_{pid}";
+                var bookedKey = $"booked_{facilityId}_{pid}";
                 if (!_cache.TryGetValue(bookedKey, out bool _))
                 {
                     var bookingOk = await BookPaymentAsync(pid, facilityId);
@@ -207,7 +209,7 @@ namespace MobilePaymentWeb.Controllers
                     }
                     else
                     {
-                        _logger.LogError("Booking failed after authorization for {Pid}; reversing iPay payment.", pid);
+                        _logger.LogError("Facility {FacilityId}: booking failed after authorization for {Pid}; reversing iPay payment.", facilityId, pid);
                         await paymentProvider.ReversePaymentAsync(pid ?? string.Empty);
                         return Json(new { statusCode = (int)Models.Payment.PaymentStatus.Cancelled, hasFiscal = false });
                     }
@@ -218,18 +220,18 @@ namespace MobilePaymentWeb.Controllers
 
             if (status.Status == Models.Payment.PaymentStatus.Success)
             {
-                var bookedKey = $"booked_{pid}";
+                var bookedKey = $"booked_{facilityId}_{pid}";
                 if (!_cache.TryGetValue(bookedKey, out bool _))
                 {
                     var bookingOk = await BookPaymentAsync(pid, facilityId);
                     if (!bookingOk)
                         _logger.LogError(
-                            "Payment {Pid} succeeded but Skidata booking failed — customer charged, gate NOT opened. Manual action required.",
-                            pid);
+                            "Facility {FacilityId}: payment {Pid} succeeded but Skidata booking failed — customer charged, gate NOT opened. Manual action required.",
+                            facilityId, pid);
                     _cache.Set(bookedKey, true, TimeSpan.FromHours(1));
                 }
 
-                var cacheKey = $"receipt_png_{pid}";
+                var cacheKey = $"receipt_png_{facilityId}_{pid}";
                 var hasFiscal = _cache.TryGetValue(cacheKey, out byte[]? _);
 
                 if (!hasFiscal)
@@ -258,44 +260,43 @@ namespace MobilePaymentWeb.Controllers
             return Json(new { statusCode = (int)status.Status, hasFiscal = false });
         }
 
-        [HttpGet("/receipt-image")]
-        public IActionResult ReceiptImage()
+        [HttpGet("receipt-image")]
+        public IActionResult ReceiptImage(string facilityId)
         {
             var pid = HttpContext.Session.GetString("payment_pid");
-            if (!string.IsNullOrEmpty(pid) && _cache.TryGetValue($"receipt_png_{pid}", out byte[]? png) && png != null)
+            if (!string.IsNullOrEmpty(pid) && _cache.TryGetValue($"receipt_png_{facilityId}_{pid}", out byte[]? png) && png != null)
                 return File(png, "image/png");
             return NotFound();
         }
 
-        [HttpGet("/success")]
-        public IActionResult PaymentSuccess()
+        [HttpGet("success")]
+        public IActionResult PaymentSuccess(string facilityId)
         {
             var pid = HttpContext.Session.GetString("payment_pid");
             if (string.IsNullOrEmpty(pid))
                 return NotFound();
 
-            SetBrandViewBag();
+            SetBrandViewBag(facilityId);
             return View();
         }
 
-        [HttpGet("/fail")]
-        public IActionResult PaymentFail()
+        [HttpGet("fail")]
+        public IActionResult PaymentFail(string facilityId)
         {
             var pid = HttpContext.Session.GetString("payment_pid");
             if (string.IsNullOrEmpty(pid))
                 return NotFound();
 
-            SetBrandViewBag();
+            SetBrandViewBag(facilityId);
             return View();
         }
 
-        // Sets logo/name for the post-payment screens, which run on /success and /fail
-        // (no facility in the route) using the facility stored in the session.
-        private void SetBrandViewBag()
+        // Sets facility id/logo/name for the post-payment screens (facility comes from the route).
+        private void SetBrandViewBag(string facilityId)
         {
-            var facilityId = HttpContext.Session.GetString("facilityId");
-            if (!string.IsNullOrEmpty(facilityId) && _facilities.TryGetValue(facilityId, out var facility))
+            if (_facilities.TryGetValue(facilityId, out var facility))
             {
+                ViewBag.FacilityId = facilityId;
                 ViewBag.Logo = facility.Display.Logo;
                 ViewBag.FacilityName = facility.Display.Name;
             }
@@ -337,8 +338,8 @@ namespace MobilePaymentWeb.Controllers
                         && paid != bookingPrice.Amount)
                     {
                         _logger.LogWarning(
-                            "BookPayment price drift: paid {Paid} UAH, current rate {Current} UAH, pid {Pid}",
-                            paid, bookingPrice.Amount, pid);
+                            "Facility {FacilityId}: BookPayment price drift: paid {Paid} UAH, current rate {Current} UAH, pid {Pid}",
+                            facilityId, paid, bookingPrice.Amount, pid);
                     }
                 }
 
@@ -358,7 +359,7 @@ namespace MobilePaymentWeb.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "BookPayment failed for pid {Pid}", pid);
+                _logger.LogError(ex, "Facility {FacilityId}: BookPayment failed for pid {Pid}", facilityId, pid);
                 return false;
             }
             finally
