@@ -63,14 +63,17 @@ namespace MobilePaymentWeb.Controllers
             }
             else if (!string.IsNullOrEmpty(licensePlate))
             {
-                identifier = licensePlate;
-                licensePlate = ConvertToLatin(identifier.Trim().ToUpper());
-                if (!System.Text.RegularExpressions.Regex.IsMatch(identifier, @"^[A-Z0-9]{3,10}$"))
+                // Normalize BEFORE validating, and use the normalized value everywhere:
+                // upper-case, Cyrillic -> Latin look-alikes, strip spaces/hyphens.
+                var plate = ConvertToLatin(licensePlate.ToUpperInvariant());
+                plate = System.Text.RegularExpressions.Regex.Replace(plate, @"[\s-]", "");
+                identifier = plate;
+                if (!System.Text.RegularExpressions.Regex.IsMatch(plate, @"^[A-Z0-9]{3,10}$"))
                 {
                     ViewBag.Error = "Невірний формат номеру авто";
                     return View("LicensePlateForm");
                 }
-                ticketId = new LicensePlateIdentification { LicenseNo = identifier, Country = CountryCodeEnum.UA };
+                ticketId = new LicensePlateIdentification { LicenseNo = plate, Country = CountryCodeEnum.UA };
             }
             else
             {
