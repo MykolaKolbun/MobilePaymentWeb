@@ -46,12 +46,14 @@ Each facility has four independent sections:
 
 ```json
 "Skidata": {
-  "Endpoint":         "https://car.webhost.skidata.com/bei/ParkingTicketManagementServiceV4",
-  "FacilityID":       "330084",
-  "ExternalDeviceID": 80,
-  "ParkingDeviceID":  80,
-  "Login":            "your-login",
-  "Password":         "your-password"
+  "Endpoint":           "https://car.webhost.skidata.com/bei/ParkingTicketManagementServiceV4",
+  "FacilityID":         "330084",
+  "ExternalDeviceID":   80,
+  "ParkingDeviceID":    80,
+  "Login":              "your-login",
+  "Password":           "your-password",
+  "BookingPaymentType": "WEB",
+  "BookingEnabled":     true
 }
 ```
 
@@ -62,6 +64,8 @@ Each facility has four independent sections:
 | `ExternalDeviceID` | Device ID sent in Skidata requests |
 | `ParkingDeviceID` | Parking device ID sent in Skidata requests |
 | `Login` / `Password` | Basic auth credentials for the SOAP service |
+| `BookingPaymentType` | Name of the manual payment method configured on the Skidata server, sent when booking the payment (`ManualPaymentItem.PaymentType`). Default `"WEB"` |
+| `BookingEnabled` | `true` (default) books the payment into Skidata on success. Set `false` for **testing** to exercise the payment/fiscal flow without registering real bookings (BookPayment is skipped and logged) |
 
 > `FacilityID` in config is the Skidata internal ID and may differ from the URL key.
 > Example: URL key `0330142` → Skidata `FacilityID` `330084`.
