@@ -274,6 +274,7 @@ namespace MobilePaymentWeb.Controllers
             if (string.IsNullOrEmpty(pid))
                 return NotFound();
 
+            SetBrandViewBag();
             return View();
         }
 
@@ -284,7 +285,20 @@ namespace MobilePaymentWeb.Controllers
             if (string.IsNullOrEmpty(pid))
                 return NotFound();
 
+            SetBrandViewBag();
             return View();
+        }
+
+        // Sets logo/name for the post-payment screens, which run on /success and /fail
+        // (no facility in the route) using the facility stored in the session.
+        private void SetBrandViewBag()
+        {
+            var facilityId = HttpContext.Session.GetString("facilityId");
+            if (!string.IsNullOrEmpty(facilityId) && _facilities.TryGetValue(facilityId, out var facility))
+            {
+                ViewBag.Logo = facility.Display.Logo;
+                ViewBag.FacilityName = facility.Display.Name;
+            }
         }
 
         private async Task<bool> BookPaymentAsync(string? pid, string facilityId)

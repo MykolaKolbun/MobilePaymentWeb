@@ -1,10 +1,7 @@
 ﻿@model MobilePaymentWeb.Models.ParkingSessionViewModel
 
 <div class="card">
-    @if (!string.IsNullOrEmpty(ViewBag.Logo as string))
-    {
-        <img src="~/images/@ViewBag.Logo" alt="@ViewBag.FacilityName" style="width: 100%; margin-bottom: 5px;" />
-    }
+    <partial name="_BrandHeader" />
     <h1>Ваша паркувальна сесія завершилась</h1>
     <h1>Чекаємо вас наступного разу</h1>
     <div class="section">

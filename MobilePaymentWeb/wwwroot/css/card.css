@@ -49,3 +49,17 @@ h1 {
     font-size: 32px;
     font-weight: bold;
 }
+
+.brand-header {
+    height: 28px;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.brand-header img {
+    height: 24px;
+    width: auto;
+    max-width: 100%;
+}

@@ -1,0 +1,9 @@
+@* Thin brand header (small logo) for the payment / result screens — answers
+   "where am I" after returning from the payment domain, without the big
+   storefront logo used on the search screen. *@
+@if (!string.IsNullOrEmpty(ViewBag.Logo as string))
+{
+    <div class="brand-header">
+        <img src="~/images/@ViewBag.Logo" alt="@ViewBag.FacilityName" />
+    </div>
+}

@@ -3,6 +3,7 @@
     var message = Model?.ErrorMessage ?? ViewBag.Error as string ?? "Помилка";
 }
 <div class="card">
+    <partial name="_BrandHeader" />
     <h1>@message</h1>
     <div class="section">
         @if (Model?.Identifier != null)
