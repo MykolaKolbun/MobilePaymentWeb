@@ -64,7 +64,7 @@ namespace MobilePaymentWeb.Services.Fiscal.CheckBox
                 response = await client.PostAsync("api/v1/cashier/signinPinCode", body);
             }
 
-            response.EnsureSuccessStatusCode();
+            await EnsureOkAsync(response, "signinPinCode");
             var token = await response.Content.ReadFromJsonAsync<CheckBoxAccessToken>(_json);
             _token = token!.AccessToken;
             _logger.LogInformation("CheckBox: authenticated");
@@ -81,10 +81,44 @@ namespace MobilePaymentWeb.Services.Fiscal.CheckBox
                 return;
             }
 
-            response.EnsureSuccessStatusCode();
+            await EnsureOkAsync(response, "cashier/shift");
             var shift = await response.Content.ReadFromJsonAsync<CheckBoxShift>(_json);
+
             if (shift?.Status != "OPENED")
+            {
                 await OpenShiftAsync();
+                return;
+            }
+
+            // A ПРРО shift must be closed within 24h; selling on a stale one returns 400.
+            // A 24/7 facility always ages the shift out, so close + reopen when it's too old.
+            if (shift.OpenedAt.HasValue && DateTimeOffset.UtcNow - shift.OpenedAt.Value > TimeSpan.FromHours(23))
+            {
+                _logger.LogInformation("CheckBox: shift open >23h, closing and reopening");
+                await CloseShiftAsync();
+                await OpenShiftAsync();
+            }
+        }
+
+        private async Task CloseShiftAsync()
+        {
+            using var client = CreateClient(includeToken: true, includeLicense: true);
+            var response = await client.PostAsync("api/v1/shifts/close", null);
+            await EnsureOkAsync(response, "shifts/close");
+
+            // Closing is async (CLOSING -> CLOSED) and issues the Z-report; wait before reopening.
+            for (int i = 0; i < 15; i++)
+            {
+                await Task.Delay(1000);
+                var check = await client.GetAsync("api/v1/cashier/shift");
+                if (check.StatusCode == System.Net.HttpStatusCode.NotFound)
+                    break;
+                var s = check.IsSuccessStatusCode
+                    ? await check.Content.ReadFromJsonAsync<CheckBoxShift>(_json)
+                    : null;
+                if (s?.Status is null or "CLOSED")
+                    break;
+            }
         }
 
         private async Task OpenShiftAsync()
@@ -92,7 +126,7 @@ namespace MobilePaymentWeb.Services.Fiscal.CheckBox
             using var client = CreateClient(includeToken: true, includeLicense: true);
             var response = await client.PostAsync("api/v1/shifts", null);
             if (response.StatusCode != System.Net.HttpStatusCode.Conflict)
-                response.EnsureSuccessStatusCode();
+                await EnsureOkAsync(response, "shifts");
 
             // Shift opening is async on the fiscal server (CREATED/OPENING -> OPENED).
             // Selling before the shift is OPENED returns 400, so wait for it here.
@@ -126,7 +160,7 @@ namespace MobilePaymentWeb.Services.Fiscal.CheckBox
                 response = await c2.PostAsJsonAsync("api/v1/receipts/sell", purchase, _json);
             }
 
-            response.EnsureSuccessStatusCode();
+            await EnsureOkAsync(response, "receipts/sell");
             var receipt = await response.Content.ReadFromJsonAsync<CheckBoxPurchaseResponse>(_json);
             _logger.LogInformation("CheckBox: receipt created {Id}", receipt!.Id);
             return receipt.Id;
@@ -139,7 +173,7 @@ namespace MobilePaymentWeb.Services.Fiscal.CheckBox
             {
                 await Task.Delay(1000);
                 var response = await client.GetAsync($"api/v1/receipts/{receiptId}");
-                response.EnsureSuccessStatusCode();
+                await EnsureOkAsync(response, "receipts/{id}");
                 var receipt = await response.Content.ReadFromJsonAsync<CheckBoxPurchaseResponse>(_json);
                 if (receipt?.Status == "DONE")
                 {
@@ -156,7 +190,7 @@ namespace MobilePaymentWeb.Services.Fiscal.CheckBox
         {
             using var client = CreateClient(includeToken: true, includeLicense: false);
             var response = await client.GetAsync($"api/v1/receipts/{receiptId}/png");
-            response.EnsureSuccessStatusCode();
+            await EnsureOkAsync(response, "receipts/{id}/png");
             return await response.Content.ReadAsByteArrayAsync();
         }
 
@@ -190,6 +224,18 @@ namespace MobilePaymentWeb.Services.Fiscal.CheckBox
                     }
                 ]
             };
+        }
+
+        // Like EnsureSuccessStatusCode, but includes the CheckBox response body in the
+        // exception so the real reason (tax/shift/payload error) reaches the logs + alert.
+        private static async Task EnsureOkAsync(HttpResponseMessage response, string op)
+        {
+            if (response.IsSuccessStatusCode)
+                return;
+            var body = await response.Content.ReadAsStringAsync();
+            if (body.Length > 500)
+                body = body[..500];
+            throw new HttpRequestException($"CheckBox {op} -> {(int)response.StatusCode}: {body}");
         }
 
         private HttpClient CreateClient(bool includeToken, bool includeLicense)

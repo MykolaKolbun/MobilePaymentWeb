@@ -9,5 +9,8 @@ namespace MobilePaymentWeb.Services.Fiscal.CheckBox.Models
 
         [JsonPropertyName("status")]
         public string Status { get; set; } = string.Empty;
+
+        [JsonPropertyName("opened_at")]
+        public DateTimeOffset? OpenedAt { get; set; }
     }
 }
