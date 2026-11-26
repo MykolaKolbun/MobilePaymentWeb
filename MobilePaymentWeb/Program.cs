@@ -17,6 +17,7 @@ var facilities = builder.Configuration
 builder.Services.AddSingleton(facilities);
 builder.Services.AddSingleton<IPaymentProviderFactory, PaymentProviderFactory>();
 builder.Services.AddSingleton<IFiscalProviderFactory, FiscalProviderFactory>();
+builder.Services.AddHostedService<MobilePaymentWeb.Services.Fiscal.ShiftMaintenanceService>();
 builder.Services.AddMemoryCache();
 
 builder.Services.AddSession(options =>

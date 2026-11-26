@@ -47,6 +47,32 @@ namespace MobilePaymentWeb.Services.Fiscal.CheckBox
             }
         }
 
+        // Called by the background ShiftMaintenanceService, independent of payments.
+        public async Task CloseShiftIfStaleAsync(TimeSpan maxAge)
+        {
+            try
+            {
+                await EnsureAuthenticatedAsync();
+                using var client = CreateClient(includeToken: true, includeLicense: true);
+                var response = await client.GetAsync("api/v1/cashier/shift");
+                if (response.StatusCode == System.Net.HttpStatusCode.NotFound || !response.IsSuccessStatusCode)
+                    return;
+
+                var shift = await response.Content.ReadFromJsonAsync<CheckBoxShift>(_json);
+                if (shift?.Status == "OPENED" && shift.OpenedAt.HasValue
+                    && DateTimeOffset.UtcNow - shift.OpenedAt.Value > maxAge)
+                {
+                    _logger.LogInformation(
+                        "Facility {FacilityId}: maintenance closing shift opened {OpenedAt}", _facilityId, shift.OpenedAt);
+                    await CloseShiftAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Facility {FacilityId}: shift maintenance failed", _facilityId);
+            }
+        }
+
         private async Task EnsureAuthenticatedAsync()
         {
             if (!string.IsNullOrEmpty(_token))
